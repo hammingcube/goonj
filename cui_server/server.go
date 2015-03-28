@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 )
 
+const MAIN_HTML = "../static_cui/cui/templates/cui.html"
+var cui_html []byte
+
 func handleHttp(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s", r.Method, r.URL)
-
 	switch r.URL.Path {
     	case "/":
         	w.Write(cui_html)
@@ -21,32 +23,8 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
         	w.Header().Set("Content-Type", "text/xml; charset=utf-8")
         	w.Write(getTask())
     }
-/*
-	if r.URL.Path == "/" {
-		w.Write(cui_html)
-	} else {
-		w.Write([]byte("Hello"))
-	}
-	cmd := r.URL.Path[len("/c/"):]
-	if cmd == "_get_task" {
-		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
-		w.Write(getTask())
-	} else {
-		w.Write([]byte("Hello World\n"))
-	}*/
+
 }
-
-const MAIN_HTML = "../static_cui/cui/templates/cui.html"
-
-func htmlResponseHandler(html []byte) http.Handler {
-	fn := func (w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s", r.Method, r.URL)
-		w.Write(html)
-	}
-	return http.HandlerFunc(fn)
-}
-
-var cui_html []byte
 
 func main() {
 	var err error
@@ -58,8 +36,6 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.HandlerFunc(handleHttp))
 	mux.Handle("/static/", http.FileServer(http.Dir("../static_cui/cui/")))
-	
 
 	log.Fatal(http.ListenAndServe(":8082", mux))
-	//log.Fatal(http.ListenAndServe(":8088", http.HandlerFunc(handleHttp)))
 }
