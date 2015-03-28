@@ -3,21 +3,25 @@ package main
 import (
 	"encoding/json"
 	"encoding/xml"
+	"log"
 )
 
 func getClock() []byte {
-	/*r := type struct {
-		Result string `xml:"result"`
-		NewTimeLimit int64 `xml:"new_timelimit"`
-		}{ 
-			Result: 'OK',
-			NewTimeLimit: -1,
-		}
-	xmlResp, err := xml.MarshalIndent(r, " ", "    ")
+	type ClockResponse struct {
+		XMLName   			xml.Name 		`xml:"response"`
+		Result 				string			`xml:"result"`
+		NewTimeLimit 		int				`xml:"new_timelimit"`
+	}
+	resp := ClockResponse{
+		Result: "OK",
+		NewTimeLimit: 3600,
+	}
+	xmlResp, err := xml.MarshalIndent(resp, " ", "    ")
 	if err != nil {
+		log.Printf("Error: %v", err)
 		return []byte{}
-	}*/
-	return []byte{}
+	}
+	return xmlResp
 }
 
 func getTask() []byte {
