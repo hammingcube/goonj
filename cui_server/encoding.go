@@ -7,13 +7,12 @@ import (
 )
 
 func getClock() []byte {
-	type ClockResponse struct {
-		XMLName   			xml.Name 		`xml:"response"`
-		Result 				string			`xml:"result"`
-		NewTimeLimit 		int				`xml:"new_timelimit"`
-	}
-	resp := ClockResponse{
-		Result: "OK",
+	resp := struct {
+		XMLName      xml.Name `xml:"response"`
+		Result       string   `xml:"result"`
+		NewTimeLimit int      `xml:"new_timelimit"`
+	}{
+		Result:       "OK",
 		NewTimeLimit: 3600,
 	}
 	xmlResp, err := xml.MarshalIndent(resp, " ", "    ")
