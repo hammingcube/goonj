@@ -16,7 +16,7 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-const MAIN_HTML = "../static_cui/cui/cui.html"
+const MAIN_HTML = "../static_cui/cui/templates/cui.html"
 
 func htmlResponseHandler(html []byte) http.Handler {
 	fn := func (w http.ResponseWriter, r *http.Request) {
