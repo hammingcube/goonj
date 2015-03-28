@@ -5,6 +5,21 @@ import (
 	"encoding/xml"
 )
 
+func getClock() []byte {
+	/*r := type struct {
+		Result string `xml:"result"`
+		NewTimeLimit int64 `xml:"new_timelimit"`
+		}{ 
+			Result: 'OK',
+			NewTimeLimit: -1,
+		}
+	xmlResp, err := xml.MarshalIndent(r, " ", "    ")
+	if err != nil {
+		return []byte{}
+	}*/
+	return []byte{}
+}
+
 func getTask() []byte {
 	type Task struct {
 		XMLName   			xml.Name 		`xml:"response"`

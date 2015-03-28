@@ -168,9 +168,50 @@
         ////////////////////INITIALIZATION////////////////////////
        
       $(document).ready(function() {
-            window.server = LocalServer();
-            server.init();
-            window.ui = CandidateUi(server.ui_options);
+            var local_ui_options =     {
+        ticket_id: "TICKET_ID",
+
+        time_elapsed_sec: 15,
+        time_remaining_sec: 1800,
+
+        current_human_lang: "en",
+        current_prg_lang: "c",
+        current_task_name: "task1",
+
+        task_names: ["task1", "task2", "task3"],
+
+        human_langs: {
+            "en": {"name_in_itself": "English"},
+            "cn": {"name_in_itself": "\u4e2d\u6587"},
+        },
+        prg_langs: {
+            "c": {"version": "C", "name": "C"},
+            "sql": {"version": "SQL", "name": "SQL"},
+            "cpp": {"version": "C++", "name": "C++"},
+        },
+
+        show_survey: true,
+        show_help: false,
+        show_welcome: true,
+        sequential: false,
+        save_often: true,
+
+        urls: {
+            "status": "/chk/status/",
+            "get_task": "/c/_get_task/",
+            "submit_survey": "/surveys/_ajax_submit_candidate_survey/TICKET_ID/",
+            "clock": "/chk/clock/",
+            "close": "/c/close/TICKET_ID",
+            "verify": "/chk/verify/",
+            "save": "/chk/save/",
+            "timeout_action": "/chk/timeout_action/",
+            "final": "/chk/final/",
+            "start_ticket": "/c/_start/"
+        },
+    };
+            //window.server = LocalServer();
+            //server.init();
+            window.ui = CandidateUi(local_ui_options);
             ui.init();
             ui.exit = function(url) {
               window.alert("CUI exiting; next page would be '"+ url +"'. \n\n" +
