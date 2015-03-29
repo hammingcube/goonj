@@ -4,6 +4,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	_ "net/http/httputil"
+	"fmt"
+	"encoding/json"
 )
 
 const MAIN_HTML = "../static_cui/cui/templates/cui.html"
@@ -23,6 +26,20 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 	case "/c/_get_task/":
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		w.Write(getTask())
+	case "/chk/save/":
+	val := struct {
+			Task string
+			Ticket string
+			ProgLang string
+			Solution string
+		} {
+		Task: r.FormValue("task"),
+		Ticket: r.FormValue("ticket"),
+		ProgLang: r.FormValue("prg_lang"),
+		Solution: r.FormValue("solution"),
+		}
+		j, _ := json.Marshal(val)
+		fmt.Printf("%s\n", string(j))
 	}
 
 }
