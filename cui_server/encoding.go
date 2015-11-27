@@ -23,7 +23,7 @@ func getClock() []byte {
 	return xmlResp
 }
 
-func getTask() []byte {
+func getTask(taskid string) []byte {
 	type Task struct {
 		XMLName          xml.Name `xml:"response"`
 		Status           string   `xml:"task_status" json: "task_status"`
@@ -45,7 +45,7 @@ func getTask() []byte {
 		Description:      "Description: task1,en,c",
 		Type:             "algo",
 		SolutionTemplate: "",
-		CurrentSolution:  "",
+		CurrentSolution:  solutions[taskid],
 		ExampleInput:     "",
 		ProgLangList:     string(prg_lang_list),
 		HumanLangList:    string(human_lang_list),

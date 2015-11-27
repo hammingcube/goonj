@@ -12,9 +12,11 @@ import (
 const MAIN_HTML = "../static_cui/cui/templates/cui.html"
 
 var cui_html []byte
+var solutions map[string]string
 
 func handleHttp(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s", r.Method, r.URL)
+	log.Println(solutions)
 	switch r.URL.Path {
 	case "/":
 		w.Write(cui_html)
@@ -24,9 +26,6 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		w.Write(getClock())
 	case "/c/_get_task/":
-		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
-		w.Write(getTask())
-	case "/chk/save/":
 		val := struct {
 			Task     string
 			Ticket   string
@@ -40,6 +39,23 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 		}
 		j, _ := json.Marshal(val)
 		fmt.Printf("%s\n", string(j))
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		w.Write(getTask(val.Task))
+	case "/chk/save/":
+		val := struct {
+			Task     string
+			Ticket   string
+			ProgLang string
+			Solution string
+		}{
+			Task:     r.FormValue("task"),
+			Ticket:   r.FormValue("ticket"),
+			ProgLang: r.FormValue("prg_lang"),
+			Solution: r.FormValue("solution"),
+		}
+		solutions[val.Task] = val.Solution
+		j, _ := json.Marshal(val)
+		fmt.Printf("%s\n", string(j))
 	}
 
 }
@@ -50,6 +66,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	solutions = map[string]string{}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.HandlerFunc(handleHttp))
