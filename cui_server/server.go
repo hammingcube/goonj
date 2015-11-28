@@ -76,6 +76,37 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 		log.Println("In /chk/save:", r.Form)
 		tasks[val.Task].CurrentSolution = val.Solution
 		tasks[val.Task].ProgLang = val.ProgLang
+
+	case "/chk/verify/":
+		r.ParseForm()
+		log.Println(r.Form)
+		type Status struct {
+			OK      int    `xml:"ok"`
+			Message string `xml:"message"`
+		}
+		type MainStatus struct {
+			Compile Status `xml:"compile"`
+			Example Status `xml:"example"`
+		}
+		resp := struct {
+			XMLName xml.Name   `xml:"response"`
+			Result  string     `xml:"result"`
+			Extra   MainStatus `xml:"extra"`
+		}{
+			Result: "OK",
+			Extra: MainStatus{
+				Compile: Status{1, "The solution compiled flawlessly."},
+				Example: Status{1, "OK"},
+			},
+		}
+		xmlResp, err := xml.MarshalIndent(resp, " ", "    ")
+		if err != nil {
+			log.Fatal(err)
+			xmlResp = []byte{}
+		}
+		fmt.Println(xmlResp)
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		w.Write(xmlResp)
 	}
 
 }
