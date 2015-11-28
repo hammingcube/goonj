@@ -73,11 +73,9 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 			ProgLang: r.FormValue("prg_lang"),
 			Solution: r.FormValue("solution"),
 		}
-		log.Printf("Before: %s", tasks)
+		log.Println("In /chk/save:", r.Form)
 		tasks[val.Task].CurrentSolution = val.Solution
-		log.Printf("After: %s", tasks)
-		j, _ := json.Marshal(val)
-		fmt.Printf("%s\n", string(j))
+		tasks[val.Task].ProgLang = val.ProgLang
 	}
 
 }
