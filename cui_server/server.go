@@ -14,6 +14,14 @@ const MAIN_HTML = "../static_cui/cui/templates/cui.html"
 var cui_html []byte
 var solutions map[string]string
 
+type ClientGetTaskMsg struct {
+	Task                 string
+	Ticket               string
+	ProgLang             string
+	HumanLang            string
+	PreferServerProgLang bool
+}
+
 func handleHttp(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s", r.Method, r.URL)
 	log.Println(solutions)
@@ -26,21 +34,19 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		w.Write(getClock())
 	case "/c/_get_task/":
-		val := struct {
-			Task     string
-			Ticket   string
-			ProgLang string
-			Solution string
-		}{
-			Task:     r.FormValue("task"),
-			Ticket:   r.FormValue("ticket"),
-			ProgLang: r.FormValue("prg_lang"),
-			Solution: r.FormValue("solution"),
+		//map[prefer_server_prg_lang:[false] ticket:[TICKET_ID] task:[task1] human_lang:[en] prg_lang:[c]]
+		val := &ClientGetTaskMsg{
+			Task:                 r.FormValue("task"),
+			Ticket:               r.FormValue("ticket"),
+			ProgLang:             r.FormValue("prg_lang"),
+			HumanLang:            r.FormValue("human_lang"),
+			PreferServerProgLang: r.FormValue("prefer_server_prg_lang") == "false",
 		}
+		log.Println(r.Form)
 		j, _ := json.Marshal(val)
 		fmt.Printf("%s\n", string(j))
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
-		w.Write(getTask(val.Task))
+		w.Write(getTask(val))
 	case "/chk/save/":
 		val := struct {
 			Task     string
