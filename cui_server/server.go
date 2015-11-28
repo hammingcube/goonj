@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -12,7 +13,7 @@ import (
 const MAIN_HTML = "../static_cui/cui/templates/cui.html"
 
 var cui_html []byte
-var solutions map[string]string
+var tasks map[string]*Task
 
 type ClientGetTaskMsg struct {
 	Task                 string
@@ -22,9 +23,22 @@ type ClientGetTaskMsg struct {
 	PreferServerProgLang bool
 }
 
+type Task struct {
+	XMLName          xml.Name `xml:"response"`
+	Status           string   `xml:"task_status" json: "task_status"`
+	Description      string   `xml:"task_description"`
+	Type             string   `xml:"task_type"`
+	SolutionTemplate string   `xml:"solution_template"`
+	CurrentSolution  string   `xml:"current_solution"`
+	ExampleInput     string   `xml:"example_input"`
+	ProgLangList     string   `xml:"prg_lang_list"`
+	HumanLangList    string   `xml:"human_lang_list"`
+	ProgLang         string   `xml:"prg_lang"`
+	HumanLang        string   `xml:"human_lang"`
+}
+
 func handleHttp(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s", r.Method, r.URL)
-	log.Println(solutions)
 	switch r.URL.Path {
 	case "/":
 		w.Write(cui_html)
@@ -59,7 +73,9 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 			ProgLang: r.FormValue("prg_lang"),
 			Solution: r.FormValue("solution"),
 		}
-		solutions[val.Task] = val.Solution
+		log.Printf("Before: %s", tasks)
+		tasks[val.Task].CurrentSolution = val.Solution
+		log.Printf("After: %s", tasks)
 		j, _ := json.Marshal(val)
 		fmt.Printf("%s\n", string(j))
 	}
@@ -73,7 +89,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	solutions = map[string]string{}
+	tasks = map[string]*Task{}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.HandlerFunc(handleHttp))
