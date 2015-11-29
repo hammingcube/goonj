@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
 	"github.com/maddyonline/goonj/cui"
@@ -28,11 +27,9 @@ func hello(c *echo.Context) error {
 }
 
 func loadTemplates() *Template {
-	_, err := template.ParseFiles("../static_cui/cui/templates/cui.html")
-	fmt.Printf("Error is: %v\n", err)
 	t := &Template{
 		// Cached templates
-		templates: template.Must(template.ParseFiles("../static_cui/cui/templates/cui.html")),
+		templates: template.Must(template.ParseFiles("static_cui/cui/templates/cui.html")),
 	}
 	return t
 }
@@ -77,7 +74,7 @@ func main() {
 
 	// Routes
 	e.Get("/hello", hello)
-	e.Static("/static/cui", "../static_cui/cui/static/cui")
+	e.Static("/static/cui", "static_cui/cui/static/cui")
 	e.Get("/cui", func(c *echo.Context) error {
 		return c.Render(http.StatusOK, "cui.html", map[string]string{"Title": "Goonj"})
 	})
