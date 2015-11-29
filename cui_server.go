@@ -57,7 +57,39 @@ func addCuiHandlers(e *echo.Echo) {
 	chk.Post("/clock", func(c *echo.Context) error {
 		return c.XML(http.StatusOK, cui.GetClock())
 	})
+	chk.Post("/save", func(c *echo.Context) error {
+		val := struct {
+			Task     string
+			Ticket   string
+			ProgLang string
+			Solution string
+		}{
+			Task:     c.Form("task"),
+			Ticket:   c.Form("ticket"),
+			ProgLang: c.Form("prg_lang"),
+			Solution: c.Form("solution"),
+		}
+		tasks[val.Task].CurrentSolution = val.Solution
+		tasks[val.Task].ProgLang = val.ProgLang
+		return c.String(http.StatusOK, "Finished saving")
+	})
 }
+
+// "/chk/save/":
+// 		val := struct {
+// 			Task     string
+// 			Ticket   string
+// 			ProgLang string
+// 			Solution string
+// 		}{
+// 			Task:     r.FormValue("task"),
+// 			Ticket:   r.FormValue("ticket"),
+// 			ProgLang: r.FormValue("prg_lang"),
+// 			Solution: r.FormValue("solution"),
+// 		}
+// 		log.Println("In /chk/save:", r.Form)
+// 		tasks[val.Task].CurrentSolution = val.Solution
+// 		tasks[val.Task].ProgLang = val.ProgLang
 
 func main() {
 	tasks = map[string]*cui.Task{}
