@@ -1,5 +1,6 @@
 package main
 
+// OLD CODE
 import (
 	"encoding/json"
 	"encoding/xml"
