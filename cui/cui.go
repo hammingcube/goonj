@@ -98,15 +98,20 @@ type VerifyStatus struct {
 	XMLName xml.Name   `xml:"response"`
 	Result  string     `xml:"result"`
 	Extra   MainStatus `xml:"extra"`
+	//NextTask string     `xml:"next_task"`
 }
 
-func GetVerifyStatus() *VerifyStatus {
+func GetVerifyStatus(final bool) *VerifyStatus {
 	resp := &VerifyStatus{
 		Result: "OK",
 		Extra: MainStatus{
 			Compile: Status{1, "The solution compiled flawlessly."},
 			Example: Status{1, "OK"},
 		},
+	}
+	if final {
+		resp.Extra.Example.OK = 0
+		resp.Extra.Example.Message = "Something went wrong"
 	}
 	return resp
 }

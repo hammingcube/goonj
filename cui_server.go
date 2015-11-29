@@ -38,6 +38,7 @@ func loadTemplates() *Template {
 
 var cui_html []byte
 var tasks map[string]*cui.Task
+var toggle bool
 
 func addCuiHandlers(e *echo.Echo) {
 	c := e.Group("/c")
@@ -79,7 +80,11 @@ func addCuiHandlers(e *echo.Echo) {
 	})
 
 	chk.Post("/verify", func(c *echo.Context) error {
-		return c.XML(http.StatusOK, cui.GetVerifyStatus())
+		toggle = !toggle
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(toggle))
+	})
+	chk.Post("/final", func(c *echo.Context) error {
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(true))
 	})
 }
 
