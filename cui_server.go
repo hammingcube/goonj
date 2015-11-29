@@ -38,11 +38,11 @@ var cui_html []byte
 var tasks map[string]*cui.Task
 
 func addCuiHandlers(e *echo.Echo) {
-	a := e.Group("/c")
-	a.Post("/_start", func(c *echo.Context) error {
+	c := e.Group("/c")
+	c.Post("/_start", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "Started")
 	})
-	a.Post("/_get_task", func(c *echo.Context) error {
+	c.Post("/_get_task", func(c *echo.Context) error {
 		val := &cui.ClientGetTaskMsg{
 			Task:                 c.Form("task"),
 			Ticket:               c.Form("ticket"),
@@ -51,6 +51,11 @@ func addCuiHandlers(e *echo.Echo) {
 			PreferServerProgLang: c.Form("prefer_server_prg_lang") == "false",
 		}
 		return c.XML(http.StatusOK, cui.GetTask(tasks, val))
+	})
+
+	chk := e.Group("/chk")
+	chk.Post("/clock", func(c *echo.Context) error {
+		return c.XML(http.StatusOK, cui.GetClock())
 	})
 }
 

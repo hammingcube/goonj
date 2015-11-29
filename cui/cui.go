@@ -80,6 +80,16 @@ type Task struct {
 	HumanLang        string   `xml:"human_lang"`
 }
 
+type ClockResponse struct {
+	XMLName      xml.Name `xml:"response"`
+	Result       string   `xml:"result"`
+	NewTimeLimit int      `xml:"new_timelimit"`
+}
+
+func GetClock() *ClockResponse {
+	return &ClockResponse{Result: "OK", NewTimeLimit: 3600}
+}
+
 func GetTask(tasks map[string]*Task, val *ClientGetTaskMsg) *Task {
 	prg_lang_list, _ := json.Marshal([]string{"c", "cpp"})
 	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
