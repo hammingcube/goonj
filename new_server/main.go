@@ -26,30 +26,46 @@ func hello(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
-func cui(c *echo.Context) error {
-	return c.Render(http.StatusOK, "cui.html", map[string]string{"Title": "Goonj"})
-}
-
-func main() {
-	// Echo instance
-	e := echo.New()
-
-	// Middleware
-	e.Use(mw.Logger())
-	e.Use(mw.Recover())
-
-	// Routes
-	e.Get("/", hello)
-
+func loadTemplates() *Template {
 	_, err := template.ParseFiles("../static_cui/cui/templates/cui.html")
 	fmt.Printf("Error is: %v\n", err)
 	t := &Template{
 		// Cached templates
 		templates: template.Must(template.ParseFiles("../static_cui/cui/templates/cui.html")),
 	}
+	return t
+}
+
+func main() {
+
+	// Echo instance
+	e := echo.New()
+	e.Hook(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		l := len(path) - 1
+		if path != "/" && path[l] == '/' {
+			r.URL.Path = path[:l]
+		}
+	})
+	t := loadTemplates()
 	e.SetRenderer(t)
-	e.Get("/cui", cui)
+
+	// Middleware
+	e.Use(mw.Logger())
+	e.Use(mw.Recover())
+
+	// Routes
+	e.Get("/hello", hello)
 	e.Static("/static/cui", "../static_cui/cui/static/cui")
+	e.Get("/cui", func(c *echo.Context) error {
+		return c.Render(http.StatusOK, "cui.html", map[string]string{"Title": "Goonj"})
+	})
+
+	a := e.Group("/c")
+
+	a.Post("/_start", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "Started")
+	})
 
 	// Start server
 	e.Run(":1323")
