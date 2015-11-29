@@ -73,6 +73,10 @@ func addCuiHandlers(e *echo.Echo) {
 		tasks[val.Task].ProgLang = val.ProgLang
 		return c.String(http.StatusOK, "Finished saving")
 	})
+
+	chk.Post("/verify", func(c *echo.Context) error {
+		return c.XML(http.StatusOK, cui.GetVerifyStatus())
+	})
 }
 
 // "/chk/save/":

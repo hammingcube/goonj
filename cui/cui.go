@@ -86,6 +86,31 @@ type ClockResponse struct {
 	NewTimeLimit int      `xml:"new_timelimit"`
 }
 
+type Status struct {
+	OK      int    `xml:"ok"`
+	Message string `xml:"message"`
+}
+type MainStatus struct {
+	Compile Status `xml:"compile"`
+	Example Status `xml:"example"`
+}
+type VerifyStatus struct {
+	XMLName xml.Name   `xml:"response"`
+	Result  string     `xml:"result"`
+	Extra   MainStatus `xml:"extra"`
+}
+
+func GetVerifyStatus() *VerifyStatus {
+	resp := &VerifyStatus{
+		Result: "OK",
+		Extra: MainStatus{
+			Compile: Status{1, "The solution compiled flawlessly."},
+			Example: Status{1, "OK"},
+		},
+	}
+	return resp
+}
+
 func GetClock() *ClockResponse {
 	return &ClockResponse{Result: "OK", NewTimeLimit: 3600}
 }
