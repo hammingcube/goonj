@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
 <meta charset="utf-8">
-<title>{{ title|default:"Codility" }}</title>
+<title>{{.Title}}</title>
 <link rel="shortcut icon" href="static/cui/img/favicon{% if DEBUG %}_debug{% endif %}.ico">
 
 
@@ -71,11 +71,11 @@
 
 <div id="page">
 
-    <input type="hidden" name="ticket" value="{{ticket.id}}" />
+    <input type="hidden" name="ticket" value="{{.Ticket.id}}" />
 
     <div id="header">
       <div class="top-bar three-columns">
-        <div class="passcode">{{ ticket.id }}</div>
+        <div class="passcode">{{ .Ticket.id }}</div>
           <div class="logos">
             <a class="test-logo" target="_blank" href="https://github.com/codility/cui"
                >C<span>U</span>I</a>
