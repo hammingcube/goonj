@@ -1,6 +1,8 @@
 package cui
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"html/template"
 	"log"
 	"os"
@@ -54,6 +56,52 @@ func Render(opts *Options) {
 	check(err)
 	err = t.Execute(os.Stdout, opts)
 	check(err)
+}
+
+type ClientGetTaskMsg struct {
+	Task                 string
+	Ticket               string
+	ProgLang             string
+	HumanLang            string
+	PreferServerProgLang bool
+}
+
+type Task struct {
+	XMLName          xml.Name `xml:"response"`
+	Status           string   `xml:"task_status" json: "task_status"`
+	Description      string   `xml:"task_description"`
+	Type             string   `xml:"task_type"`
+	SolutionTemplate string   `xml:"solution_template"`
+	CurrentSolution  string   `xml:"current_solution"`
+	ExampleInput     string   `xml:"example_input"`
+	ProgLangList     string   `xml:"prg_lang_list"`
+	HumanLangList    string   `xml:"human_lang_list"`
+	ProgLang         string   `xml:"prg_lang"`
+	HumanLang        string   `xml:"human_lang"`
+}
+
+func GetTask(tasks map[string]*Task, val *ClientGetTaskMsg) *Task {
+	prg_lang_list, _ := json.Marshal([]string{"c", "cpp"})
+	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
+	task := tasks[val.Task]
+	if task == nil {
+		task = &Task{
+			Status:           "open",
+			Description:      "Description: task1,en,c",
+			Type:             "algo",
+			SolutionTemplate: "",
+			CurrentSolution:  "",
+			ExampleInput:     "",
+			ProgLangList:     string(prg_lang_list),
+			HumanLangList:    string(human_lang_list),
+			ProgLang:         val.ProgLang,
+			HumanLang:        val.HumanLang,
+		}
+		tasks[val.Task] = task
+	}
+	task.ProgLang = val.ProgLang
+	task.HumanLang = val.HumanLang
+	return task
 }
 
 const expected = `{
