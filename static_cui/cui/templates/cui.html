@@ -71,11 +71,11 @@
 
 <div id="page">
 
-    <input type="hidden" name="ticket" value="{{.Ticket.id}}" />
+    <input type="hidden" name="ticket" value="{{.Ticket.Id}}" />
 
     <div id="header">
       <div class="top-bar three-columns">
-        <div class="passcode">{{ .Ticket.id }}</div>
+        <div class="passcode">{{ .Ticket.Id }}</div>
           <div class="logos">
             <a class="test-logo" target="_blank" href="https://github.com/codility/cui"
                >C<span>U</span>I</a>
@@ -169,7 +169,7 @@
        
       $(document).ready(function() {
             var local_ui_options =     {
-        ticket_id: "TICKET_ID",
+        ticket_id: {{ .Ticket.Id }},
 
         time_elapsed_sec: 15,
         time_remaining_sec: 1800,

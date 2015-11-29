@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
+	"github.com/labstack/gommon/log"
 	"github.com/maddyonline/goonj/cui"
 	"html/template"
 	"io"
@@ -69,6 +71,8 @@ func addCuiHandlers(e *echo.Echo) {
 			ProgLang: c.Form("prg_lang"),
 			Solution: c.Form("solution"),
 		}
+		v, _ := json.Marshal(val)
+		log.Info("%s", string(v))
 		tasks[val.Task].CurrentSolution = val.Solution
 		tasks[val.Task].ProgLang = val.ProgLang
 		return c.String(http.StatusOK, "Finished saving")
@@ -101,7 +105,11 @@ func main() {
 	e.Get("/hello", hello)
 	e.Static("/static/cui", "static_cui/cui/static/cui")
 	e.Get("/cui", func(c *echo.Context) error {
-		return c.Render(http.StatusOK, "cui.html", map[string]string{"Title": "Goonj"})
+		type Ticket struct {
+			Id string
+		}
+		ticket := &Ticket{"my-unique-id"}
+		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": ticket})
 	})
 
 	addCuiHandlers(e)
