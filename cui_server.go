@@ -37,7 +37,8 @@ func loadTemplates() *Template {
 }
 
 var cui_html []byte
-var tasks map[string]*cui.Task
+
+var tasks map[cui.TaskKey]*cui.Task
 var toggle bool
 
 func addCuiHandlers(e *echo.Echo) {
@@ -74,8 +75,9 @@ func addCuiHandlers(e *echo.Echo) {
 		}
 		v, _ := json.Marshal(val)
 		log.Info("%s", string(v))
-		tasks[val.Task].CurrentSolution = val.Solution
-		tasks[val.Task].ProgLang = val.ProgLang
+		key := cui.TaskKey{val.Ticket, val.Task}
+		tasks[key].CurrentSolution = val.Solution
+		tasks[key].ProgLang = val.ProgLang
 		return c.String(http.StatusOK, "Finished saving")
 	})
 
@@ -89,7 +91,7 @@ func addCuiHandlers(e *echo.Echo) {
 }
 
 func main() {
-	tasks = map[string]*cui.Task{}
+	tasks = map[cui.TaskKey]*cui.Task{}
 	// Echo instance
 	e := echo.New()
 	e.Hook(func(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +115,7 @@ func main() {
 		type Ticket struct {
 			Id string
 		}
-		ticket := &Ticket{"my-unique-id"}
+		ticket := &Ticket{RandId()}
 		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": ticket})
 	})
 

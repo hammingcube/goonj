@@ -58,6 +58,11 @@ func Render(opts *Options) {
 	check(err)
 }
 
+type TaskKey struct {
+	TicketId string
+	TaskId   string
+}
+
 type ClientGetTaskMsg struct {
 	Task                 string
 	Ticket               string
@@ -120,10 +125,11 @@ func GetClock() *ClockResponse {
 	return &ClockResponse{Result: "OK", NewTimeLimit: 3600}
 }
 
-func GetTask(tasks map[string]*Task, val *ClientGetTaskMsg) *Task {
+func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
+	key := TaskKey{val.Ticket, val.Task}
 	prg_lang_list, _ := json.Marshal([]string{"c", "cpp"})
 	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
-	task := tasks[val.Task]
+	task := tasks[key]
 	if task == nil {
 		task = &Task{
 			Status:           "open",
@@ -137,7 +143,7 @@ func GetTask(tasks map[string]*Task, val *ClientGetTaskMsg) *Task {
 			ProgLang:         val.ProgLang,
 			HumanLang:        val.HumanLang,
 		}
-		tasks[val.Task] = task
+		tasks[key] = task
 	}
 	task.ProgLang = val.ProgLang
 	task.HumanLang = val.HumanLang
