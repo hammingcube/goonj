@@ -79,22 +79,6 @@ func addCuiHandlers(e *echo.Echo) {
 	})
 }
 
-// "/chk/save/":
-// 		val := struct {
-// 			Task     string
-// 			Ticket   string
-// 			ProgLang string
-// 			Solution string
-// 		}{
-// 			Task:     r.FormValue("task"),
-// 			Ticket:   r.FormValue("ticket"),
-// 			ProgLang: r.FormValue("prg_lang"),
-// 			Solution: r.FormValue("solution"),
-// 		}
-// 		log.Println("In /chk/save:", r.Form)
-// 		tasks[val.Task].CurrentSolution = val.Solution
-// 		tasks[val.Task].ProgLang = val.ProgLang
-
 func main() {
 	tasks = map[string]*cui.Task{}
 	// Echo instance
