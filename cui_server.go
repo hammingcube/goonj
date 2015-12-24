@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
@@ -9,7 +11,42 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 )
+
+var opts struct {
+	Port            string
+	StaticFilesRoot string
+}
+
+func assignString(v *string, args ...string) {
+	for _, arg := range args {
+		if arg != "" {
+			*v = arg
+			break
+		}
+	}
+}
+
+const ENV_PORT_NAME = "CUI_PORT"
+const ENV_STATIC_FILES_DIR = "CUI_STATIC_FILES_DIR"
+
+const DEFAULT_PORT = "1323"
+const DEFAULT_STATIC_DIR = "."
+
+func initializeConfig() {
+	flag.StringVar(&opts.Port, "port", "", "Port on which server runs")
+	flag.StringVar(&opts.StaticFilesRoot, "static", "", "Path to static directory")
+	flag.Parse()
+	assignString(&opts.Port, opts.Port, os.Getenv(ENV_PORT_NAME), DEFAULT_PORT)
+	defaultDir, err := filepath.Abs(DEFAULT_STATIC_DIR)
+	if err != nil {
+		log.Error("Got error while taking absolute path of %s: %v", DEFAULT_STATIC_DIR, err)
+		defaultDir = "."
+	}
+	assignString(&opts.StaticFilesRoot, opts.StaticFilesRoot, os.Getenv(ENV_STATIC_FILES_DIR), defaultDir)
+}
 
 type (
 	// Template provides HTML template rendering
@@ -91,6 +128,12 @@ func addCuiHandlers(e *echo.Echo) {
 }
 
 func main() {
+	initializeConfig()
+	port := opts.Port
+	staticDir := filepath.Join(opts.StaticFilesRoot, "static_cui/cui/static/cui")
+	log.Info("Using PORT=%s", port)
+	log.Info("Using StaticDir=%s", staticDir)
+
 	tasks = map[cui.TaskKey]*cui.Task{}
 	// Echo instance
 	e := echo.New()
@@ -110,7 +153,7 @@ func main() {
 
 	// Routes
 	e.Get("/hello", hello)
-	e.Static("/static/cui", "static_cui/cui/static/cui")
+	e.Static("/static/cui", staticDir)
 	e.Get("/cui", func(c *echo.Context) error {
 		type Ticket struct {
 			Id string
@@ -122,5 +165,5 @@ func main() {
 	addCuiHandlers(e)
 
 	// Start server
-	e.Run(":1323")
+	e.Run(fmt.Sprintf(":%s", port))
 }
