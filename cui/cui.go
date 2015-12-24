@@ -3,9 +3,10 @@ package cui
 import (
 	"encoding/json"
 	"encoding/xml"
+	"github.com/labstack/gommon/log"
 	"html/template"
-	"log"
 	"os"
+	"time"
 )
 
 type HumanLang struct {
@@ -71,6 +72,11 @@ type ClientGetTaskMsg struct {
 	PreferServerProgLang bool
 }
 
+type Session struct {
+	StartTime time.Time
+	TimeLimit int
+}
+
 type Task struct {
 	XMLName          xml.Name `xml:"response"`
 	Status           string   `xml:"task_status" json: "task_status"`
@@ -85,6 +91,10 @@ type Task struct {
 	HumanLang        string   `xml:"human_lang"`
 }
 
+type ClockRequest struct {
+	TicketId     string `schema:"ticket"`
+	OldTimeLimit int    `schema:"old_timelimit"`
+}
 type ClockResponse struct {
 	XMLName      xml.Name `xml:"response"`
 	Result       string   `xml:"result"`
@@ -121,8 +131,19 @@ func GetVerifyStatus(final bool) *VerifyStatus {
 	return resp
 }
 
-func GetClock() *ClockResponse {
-	return &ClockResponse{Result: "OK", NewTimeLimit: 3600}
+func GetClock(sessions map[string]*Session, clkReq *ClockRequest) *ClockResponse {
+	session, ok := sessions[clkReq.TicketId]
+	if !ok {
+		return &ClockResponse{Result: "OK", NewTimeLimit: clkReq.OldTimeLimit}
+	}
+	elapsed := int(time.Since(session.StartTime) / time.Second)
+	remaining := session.TimeLimit - elapsed
+	log.Info("elapsed: %s, remaining: %s", time.Duration(elapsed)*time.Second, time.Duration(remaining)*time.Second)
+	if remaining < 0 {
+		remaining = 0
+	}
+	log.Info("newTimeLimit: %v, that is, %s", remaining, time.Duration(remaining)*time.Second)
+	return &ClockResponse{Result: "OK", NewTimeLimit: remaining}
 }
 
 func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/gorilla/schema"
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
@@ -13,7 +14,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
+
+var schemaDecoder *schema.Decoder
 
 var opts struct {
 	Port            string
@@ -82,6 +86,7 @@ func loadTemplates(templatesDir string) *Template {
 var cui_html []byte
 
 var tasks map[cui.TaskKey]*cui.Task
+var cuiSessions map[string]*cui.Session
 var toggle bool
 
 func addCuiHandlers(e *echo.Echo) {
@@ -102,7 +107,16 @@ func addCuiHandlers(e *echo.Echo) {
 
 	chk := e.Group("/chk")
 	chk.Post("/clock", func(c *echo.Context) error {
-		return c.XML(http.StatusOK, cui.GetClock())
+		c.Request().ParseForm()
+		clkReq := &cui.ClockRequest{}
+		schemaDecoder.Decode(clkReq, c.Request().Form)
+		log.Info("Clock Request: %v", clkReq)
+		oldlimit := time.Duration(clkReq.OldTimeLimit) * time.Second
+		resp := cui.GetClock(cuiSessions, clkReq)
+		newlimit := time.Duration(resp.NewTimeLimit) * time.Second
+		log.Info("Clock Request: OldLimit=%s", oldlimit)
+		log.Info("Clock Response: NewLimit=%s", newlimit)
+		return c.XML(http.StatusOK, resp)
 	})
 	chk.Post("/save", func(c *echo.Context) error {
 		val := struct {
@@ -142,7 +156,10 @@ func main() {
 	log.Info("Using Static Directory=%s", staticDir)
 	log.Info("Using Templates Directory=%s", templatesDir)
 
+	schemaDecoder = schema.NewDecoder()
+	cuiSessions = map[string]*cui.Session{}
 	tasks = map[cui.TaskKey]*cui.Task{}
+
 	// Echo instance
 	e := echo.New()
 	e.Hook(func(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +174,7 @@ func main() {
 
 	// Middleware
 	e.Use(mw.Logger())
-	e.Use(mw.Recover())
+	//e.Use(mw.Recover())
 
 	// Routes
 	e.Get("/hello", hello)
@@ -167,6 +184,7 @@ func main() {
 			Id string
 		}
 		ticket := &Ticket{RandId()}
+		cuiSessions[ticket.Id] = &cui.Session{StartTime: time.Now(), TimeLimit: 3600}
 		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": ticket})
 	})
 
