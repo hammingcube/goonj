@@ -36,6 +36,12 @@ const DEFAULT_PORT = "1323"
 const DEFAULT_STATIC_DIR = "."
 
 func initializeConfig() {
+	var oldUsage = flag.Usage
+	var newUsage = func() {
+		oldUsage()
+		fmt.Fprintf(os.Stderr, "Alternatively, you may set environment variables %s and %s\n", ENV_PORT_NAME, ENV_STATIC_FILES_DIR)
+	}
+	flag.Usage = newUsage
 	flag.StringVar(&opts.Port, "port", "", "Port on which server runs")
 	flag.StringVar(&opts.StaticFilesRoot, "static", "", "Path to static directory")
 	flag.Parse()
@@ -65,10 +71,10 @@ func hello(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
-func loadTemplates() *Template {
+func loadTemplates(templatesDir string) *Template {
 	t := &Template{
 		// Cached templates
-		templates: template.Must(template.ParseFiles("static_cui/cui/templates/cui.html")),
+		templates: template.Must(template.ParseFiles(filepath.Join(templatesDir, "cui.html"))),
 	}
 	return t
 }
@@ -131,8 +137,10 @@ func main() {
 	initializeConfig()
 	port := opts.Port
 	staticDir := filepath.Join(opts.StaticFilesRoot, "static_cui/cui/static/cui")
-	log.Info("Using PORT=%s", port)
-	log.Info("Using StaticDir=%s", staticDir)
+	templatesDir := filepath.Join(opts.StaticFilesRoot, "static_cui/cui/templates")
+	log.Info("Using Port=%s", port)
+	log.Info("Using Static Directory=%s", staticDir)
+	log.Info("Using Templates Directory=%s", templatesDir)
 
 	tasks = map[cui.TaskKey]*cui.Task{}
 	// Echo instance
@@ -144,7 +152,7 @@ func main() {
 			r.URL.Path = path[:l]
 		}
 	})
-	t := loadTemplates()
+	t := loadTemplates(templatesDir)
 	e.SetRenderer(t)
 
 	// Middleware
