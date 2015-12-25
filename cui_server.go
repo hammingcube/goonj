@@ -37,7 +37,6 @@ const ENV_PORT_NAME = "CUI_PORT"
 const ENV_STATIC_FILES_DIR = "CUI_STATIC_FILES_DIR"
 
 const DEFAULT_PORT = "1323"
-const DEFAULT_STATIC_DIR = "."
 
 func initializeConfig() {
 	var oldUsage = flag.Usage
@@ -46,14 +45,21 @@ func initializeConfig() {
 		fmt.Fprintf(os.Stderr, "Alternatively, you may set environment variables %s and %s\n", ENV_PORT_NAME, ENV_STATIC_FILES_DIR)
 	}
 	flag.Usage = newUsage
+
 	flag.StringVar(&opts.Port, "port", "", "Port on which server runs")
 	flag.StringVar(&opts.StaticFilesRoot, "static", "", "Path to static directory")
 	flag.Parse()
+
+	// Configure opts.Port
 	assignString(&opts.Port, opts.Port, os.Getenv(ENV_PORT_NAME), DEFAULT_PORT)
-	defaultDir, err := filepath.Abs(DEFAULT_STATIC_DIR)
-	if err != nil {
-		log.Error("Got error while taking absolute path of %s: %v", DEFAULT_STATIC_DIR, err)
-		defaultDir = "."
+
+	// Configure opts.StaticFilesRoot
+	defaultDir := "."
+	if GOPATH := os.Getenv("GOPATH"); GOPATH != "" {
+		srcDir, err := filepath.Abs(filepath.Join(GOPATH, "src/github.com/maddyonline/goonj"))
+		if err == nil {
+			defaultDir = srcDir
+		}
 	}
 	assignString(&opts.StaticFilesRoot, opts.StaticFilesRoot, os.Getenv(ENV_STATIC_FILES_DIR), defaultDir)
 }
@@ -139,6 +145,11 @@ func addCuiHandlers(e *echo.Echo) {
 	})
 
 	chk.Post("/verify", func(c *echo.Context) error {
+		//fmt.Println(c.Form("ticket"))
+		c.Request().ParseForm()
+		verifyReq := &cui.VerifySolnRequest{}
+		schemaDecoder.Decode(verifyReq, c.Request().Form)
+		log.Info("Form: %#v", verifyReq)
 		toggle = !toggle
 		return c.XML(http.StatusOK, cui.GetVerifyStatus(toggle))
 	})

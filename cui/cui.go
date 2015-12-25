@@ -101,6 +101,13 @@ type ClockResponse struct {
 	NewTimeLimit int      `xml:"new_timelimit"`
 }
 
+type VerifySolnRequest struct {
+	Ticket   string `schema:"ticket"`
+	Task     string `schema:"task"`
+	ProgLang string `scheam:"prg_lang"`
+	Solution string `schema:"solution"`
+}
+
 type Status struct {
 	OK      int    `xml:"ok"`
 	Message string `xml:"message"`
