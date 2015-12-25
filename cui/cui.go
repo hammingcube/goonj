@@ -79,6 +79,7 @@ type Session struct {
 
 type Task struct {
 	XMLName          xml.Name `xml:"response"`
+	Id               string   `xml:"id" json:"id"`
 	Status           string   `xml:"task_status" json: "task_status"`
 	Description      string   `xml:"task_description"`
 	Type             string   `xml:"task_type"`
@@ -101,7 +102,7 @@ type ClockResponse struct {
 	NewTimeLimit int      `xml:"new_timelimit"`
 }
 
-type VerifySolnRequest struct {
+type SolutionRequest struct {
 	Ticket   string `schema:"ticket"`
 	Task     string `schema:"task"`
 	ProgLang string `scheam:"prg_lang"`
@@ -159,7 +160,9 @@ func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
 	task := tasks[key]
 	if task == nil {
+		log.Info("Serving task based on nil request")
 		task = &Task{
+			Id:               val.Task,
 			Status:           "open",
 			Description:      "Description: task1,en,c",
 			Type:             "algo",
@@ -173,6 +176,8 @@ func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 		}
 		tasks[key] = task
 	}
+	log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.ProgLang, val.ProgLang)
+	log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.HumanLang, val.HumanLang)
 	task.ProgLang = val.ProgLang
 	task.HumanLang = val.HumanLang
 	return task

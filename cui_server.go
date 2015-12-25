@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gorilla/schema"
@@ -9,6 +8,7 @@ import (
 	mw "github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/maddyonline/goonj/cui"
+	"github.com/maddyonline/hey/utils"
 	"html/template"
 	"io"
 	"net/http"
@@ -125,29 +125,36 @@ func addCuiHandlers(e *echo.Echo) {
 		return c.XML(http.StatusOK, resp)
 	})
 	chk.Post("/save", func(c *echo.Context) error {
-		val := struct {
-			Task     string
-			Ticket   string
-			ProgLang string
-			Solution string
-		}{
-			Task:     c.Form("task"),
+		solnReq := &cui.SolutionRequest{
 			Ticket:   c.Form("ticket"),
+			Task:     c.Form("task"),
 			ProgLang: c.Form("prg_lang"),
 			Solution: c.Form("solution"),
 		}
-		v, _ := json.Marshal(val)
-		log.Info("%s", string(v))
-		key := cui.TaskKey{val.Ticket, val.Task}
-		tasks[key].CurrentSolution = val.Solution
-		tasks[key].ProgLang = val.ProgLang
+		log.Info("%s %s Form: %#v", c.Request().Method, c.Request().URL, solnReq)
+		log.Info("%s %s prg_lang: %s", c.Request().Method, c.Request().URL, c.Form("prg_lang"))
+		task, ok := tasks[cui.TaskKey{solnReq.Ticket, solnReq.Task}]
+		if !ok {
+			return c.String(http.StatusOK, "Finished saving")
+		}
+
+		log.Info("%s %s task.ProgLang: %s, solnReq.ProgLang: %s", c.Request().Method, c.Request().URL, task.ProgLang, solnReq.ProgLang)
+
+		ext := map[string]string{"cpp": "cpp", "c": "c"}[solnReq.ProgLang]
+		file := fmt.Sprintf("/tmp/cui/%s/%s/main.%s", solnReq.Ticket, solnReq.Task, ext)
+		log.Info("Writing soln to %s", file)
+		err := utils.UpdateFile(file, solnReq.Solution)
+		if err != nil {
+			panic(err)
+		}
+		task.CurrentSolution = solnReq.Solution
+		task.ProgLang = solnReq.ProgLang
 		return c.String(http.StatusOK, "Finished saving")
 	})
 
 	chk.Post("/verify", func(c *echo.Context) error {
-		//fmt.Println(c.Form("ticket"))
 		c.Request().ParseForm()
-		verifyReq := &cui.VerifySolnRequest{}
+		verifyReq := &cui.SolutionRequest{}
 		schemaDecoder.Decode(verifyReq, c.Request().Form)
 		log.Info("Form: %#v", verifyReq)
 		toggle = !toggle
