@@ -3,7 +3,9 @@ package cui
 import (
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"github.com/labstack/gommon/log"
+	"github.com/maddyonline/goonj/runner"
 	"html/template"
 	"os"
 	"time"
@@ -90,6 +92,7 @@ type Task struct {
 	HumanLangList    string   `xml:"human_lang_list"`
 	ProgLang         string   `xml:"prg_lang"`
 	HumanLang        string   `xml:"human_lang"`
+	Src              string   `xml:"-"`
 }
 
 type ClockRequest struct {
@@ -124,7 +127,8 @@ type VerifyStatus struct {
 	//NextTask string     `xml:"next_task"`
 }
 
-func GetVerifyStatus(final bool) *VerifyStatus {
+func GetVerifyStatus(src string) *VerifyStatus {
+	log.Info("In GetVerifyStatus, got src=%s", src)
 	resp := &VerifyStatus{
 		Result: "OK",
 		Extra: MainStatus{
@@ -132,9 +136,17 @@ func GetVerifyStatus(final bool) *VerifyStatus {
 			Example: Status{1, "OK"},
 		},
 	}
-	if final {
+	if src == "" {
+		return resp
+	}
+	out, err := runner.RunIt(src)
+	log.Info("In GetVerifyStatus, got out=%q, err=%v", string(out), err)
+	resp.Extra.Example.Message = string(out)
+	if err != nil {
+		resp.Extra.Example.Message = resp.Extra.Example.Message + "\n" + fmt.Sprintf("%s", err)
 		resp.Extra.Example.OK = 0
-		resp.Extra.Example.Message = "Something went wrong"
+	} else {
+		resp.Extra.Example.OK = 1
 	}
 	return resp
 }
