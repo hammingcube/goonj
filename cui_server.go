@@ -97,6 +97,35 @@ var toggle bool
 
 const TMP_DIR = "/Users/madhavjha/src/github.com/maddyonline/tempdir"
 
+func saveSolution(c *echo.Context) *cui.Task {
+	solnReq := &cui.SolutionRequest{
+		Ticket:   c.Form("ticket"),
+		Task:     c.Form("task"),
+		ProgLang: c.Form("prg_lang"),
+		Solution: c.Form("solution"),
+	}
+	log.Info("%s %s Form: %#v", c.Request().Method, c.Request().URL, solnReq)
+	log.Info("%s %s prg_lang: %s", c.Request().Method, c.Request().URL, c.Form("prg_lang"))
+	task, ok := tasks[cui.TaskKey{solnReq.Ticket, solnReq.Task}]
+	if !ok {
+		return nil
+	}
+
+	log.Info("%s %s task.ProgLang: %s, solnReq.ProgLang: %s", c.Request().Method, c.Request().URL, task.ProgLang, solnReq.ProgLang)
+
+	ext := map[string]string{"cpp": "cpp", "c": "c"}[solnReq.ProgLang]
+	file := fmt.Sprintf("%s/%s/%s/main.%s", TMP_DIR, solnReq.Ticket, solnReq.Task, ext)
+	log.Info("Writing soln to %s", file)
+	err := utils.UpdateFile(file, solnReq.Solution)
+	if err != nil {
+		panic(err)
+	}
+	task.Src = file
+	task.CurrentSolution = solnReq.Solution
+	task.ProgLang = solnReq.ProgLang
+	return task
+}
+
 func addCuiHandlers(e *echo.Echo) {
 	c := e.Group("/c")
 	c.Post("/_start", func(c *echo.Context) error {
@@ -126,49 +155,17 @@ func addCuiHandlers(e *echo.Echo) {
 		log.Info("Clock Response: NewLimit=%s", newlimit)
 		return c.XML(http.StatusOK, resp)
 	})
+
 	chk.Post("/save", func(c *echo.Context) error {
-		solnReq := &cui.SolutionRequest{
-			Ticket:   c.Form("ticket"),
-			Task:     c.Form("task"),
-			ProgLang: c.Form("prg_lang"),
-			Solution: c.Form("solution"),
-		}
-		log.Info("%s %s Form: %#v", c.Request().Method, c.Request().URL, solnReq)
-		log.Info("%s %s prg_lang: %s", c.Request().Method, c.Request().URL, c.Form("prg_lang"))
-		task, ok := tasks[cui.TaskKey{solnReq.Ticket, solnReq.Task}]
-		if !ok {
-			return c.String(http.StatusOK, "Finished saving")
-		}
-
-		log.Info("%s %s task.ProgLang: %s, solnReq.ProgLang: %s", c.Request().Method, c.Request().URL, task.ProgLang, solnReq.ProgLang)
-
-		ext := map[string]string{"cpp": "cpp", "c": "c"}[solnReq.ProgLang]
-		file := fmt.Sprintf("%s/%s/%s/main.%s", TMP_DIR, solnReq.Ticket, solnReq.Task, ext)
-		log.Info("Writing soln to %s", file)
-		err := utils.UpdateFile(file, solnReq.Solution)
-		if err != nil {
-			panic(err)
-		}
-		task.Src = file
-		task.CurrentSolution = solnReq.Solution
-		task.ProgLang = solnReq.ProgLang
+		saveSolution(c)
 		return c.String(http.StatusOK, "Finished saving")
 	})
 
 	chk.Post("/verify", func(c *echo.Context) error {
-		solnReq := &cui.SolutionRequest{
-			Ticket:   c.Form("ticket"),
-			Task:     c.Form("task"),
-			ProgLang: c.Form("prg_lang"),
-			Solution: c.Form("solution"),
+		task := saveSolution(c)
+		if task == nil {
+			c.XML(http.StatusOK, cui.GetVerifyStatus(""))
 		}
-		log.Info("%s %s Form: %#v", c.Request().Method, c.Request().URL, solnReq)
-		log.Info("%s %s prg_lang: %s", c.Request().Method, c.Request().URL, c.Form("prg_lang"))
-		task, ok := tasks[cui.TaskKey{solnReq.Ticket, solnReq.Task}]
-		if !ok {
-			return c.String(http.StatusOK, "Finished saving")
-		}
-		log.Info("%s %s task.Src: %s", c.Request().Method, c.Request().URL, task.Src)
 		return c.XML(http.StatusOK, cui.GetVerifyStatus(task.Src))
 	})
 	chk.Post("/final", func(c *echo.Context) error {
