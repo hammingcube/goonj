@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"time"
 )
@@ -95,7 +96,15 @@ var tasks map[cui.TaskKey]*cui.Task
 var cuiSessions map[string]*cui.Session
 var toggle bool
 
-const TMP_DIR = "/Users/madhavjha/src/github.com/maddyonline/tempdir"
+var TMP_DIR string
+
+func getTmpWorkDir() (string, error) {
+	u, err := user.Current()
+	if err != nil {
+		return utils.CreateDirIfReqd("goonj-workdir")
+	}
+	return utils.CreateDirIfReqd(filepath.Join(u.HomeDir, "goonj-workdir"))
+}
 
 func saveSolution(c *echo.Context) *cui.Task {
 	solnReq := &cui.SolutionRequest{
@@ -184,6 +193,13 @@ func main() {
 	schemaDecoder = schema.NewDecoder()
 	cuiSessions = map[string]*cui.Session{}
 	tasks = map[cui.TaskKey]*cui.Task{}
+
+	var err error
+	TMP_DIR, err = getTmpWorkDir()
+	if err != nil {
+		log.Fatal("Failed to initialize tmp_dir: %v", err)
+		return
+	}
 
 	// Echo instance
 	e := echo.New()
