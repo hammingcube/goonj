@@ -163,13 +163,12 @@ func addCuiHandlers(e *echo.Echo) {
 
 	chk.Post("/verify", func(c *echo.Context) error {
 		task := saveSolution(c)
-		if task == nil {
-			c.XML(http.StatusOK, cui.GetVerifyStatus(""))
-		}
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(task.Src))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(task))
 	})
+
 	chk.Post("/final", func(c *echo.Context) error {
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(""))
+		task := saveSolution(c)
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(task))
 	})
 }
 

@@ -127,8 +127,7 @@ type VerifyStatus struct {
 	//NextTask string     `xml:"next_task"`
 }
 
-func GetVerifyStatus(src string) *VerifyStatus {
-	log.Info("In GetVerifyStatus, got src=%s", src)
+func GetVerifyStatus(task *Task) *VerifyStatus {
 	resp := &VerifyStatus{
 		Result: "OK",
 		Extra: MainStatus{
@@ -136,10 +135,10 @@ func GetVerifyStatus(src string) *VerifyStatus {
 			Example: Status{1, "OK"},
 		},
 	}
-	if src == "" {
+	if task == nil {
 		return resp
 	}
-	out, err := runner.RunIt(src)
+	out, err := runner.RunIt(task.Src, task.ProgLang)
 	log.Info("In GetVerifyStatus, got out=%q, err=%v", string(out), err)
 	resp.Extra.Example.Message = string(out)
 	if err != nil {
