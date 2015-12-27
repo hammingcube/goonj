@@ -1316,11 +1316,11 @@ function CandidateUi(options)
     };
 
     self.WELCOME_MESSAGE = (
-        'This is <a href="https://github.com/codility/cui" target="_blank">CUI</a>.  ' +
-        'CUI is free software.  ' +
+        'This is a <a href="https://github.com/maddyonline/goonj" target="_blank">"fork"</a> of Codility\'s original <a href="https://github.com/codility/cui" target="_blank">CUI</a>.  ' +
+        'The original CUI is free software.  ' +
         'See <a href="https://github.com/Codility/cui/blob/master/COPYING.LESSER" target="_blank">COPYING.LESSER</a> ' +
         'and <a href="https://github.com/Codility/cui/blob/master/AUTHORS" target="_blank">AUTHORS</a> ' +
-        'for details.'
+        'for details about the original project.'
     );
 
     self.initTask = function() {
