@@ -3,18 +3,21 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/google/go-github/github"
 	"github.com/gorilla/schema"
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/maddyonline/goonj/cui"
 	"github.com/maddyonline/hey/utils"
+	"golang.org/x/oauth2"
 	"html/template"
 	"io"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -129,6 +132,9 @@ func saveSolution(c *echo.Context) *cui.Task {
 	if err != nil {
 		panic(err)
 	}
+	//saveAsGist(githubClient, file, solnReq.Solution)
+	log.Info("Storing solution: %s\n", solnReq.Solution)
+	saveAsGist(githubClient, solnReq.Ticket, strings.Join([]string{solnReq.Task, filepath.Base(file)}, "-"), string(solnReq.Solution))
 	task.Src = file
 	task.CurrentSolution = solnReq.Solution
 	task.ProgLang = solnReq.ProgLang
@@ -181,6 +187,53 @@ func addCuiHandlers(e *echo.Echo) {
 	})
 }
 
+var (
+	githubClient *github.Client
+	gistStore    = map[string]*github.Gist{}
+)
+
+func initializeGitClient() {
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: ""},
+	)
+	tc := oauth2.NewClient(oauth2.NoContext, ts)
+	githubClient = github.NewClient(tc)
+}
+
+func saveAsGist(client *github.Client, key, filename, filecontent string) {
+	createGist := func(client *github.Client, desc string, files map[string]string) (*github.Gist, *github.Response, error) {
+		gfiles := map[github.GistFilename]github.GistFile{}
+		log.Info("Writing following files: %#v", files)
+		for fname, content := range files {
+			gfiles[github.GistFilename(fname)] = github.GistFile{Filename: &fname, Content: &content}
+		}
+		return client.Gists.Create(&github.Gist{
+			Description: &desc,
+			Files:       gfiles,
+		})
+	}
+	savedGist, ok := gistStore[key]
+	if !ok {
+		g, resp, err := createGist(client, "ThinkHike App", map[string]string{filename: filecontent, "meta.json": fmt.Sprintf(`{"key": "%s"}`, key)})
+		if err != nil {
+			log.Info("Got error while creating gist: %v", err)
+			log.Info("Specifically, %s\n", resp)
+		} else {
+			log.Info("Created gist: %s\n", g)
+			gistStore[key] = g
+		}
+	} else {
+		savedGist.Files[github.GistFilename(filename)] = github.GistFile{Filename: &filename, Content: &filecontent}
+		g, _, err := client.Gists.Edit(*savedGist.ID, savedGist)
+		if err != nil {
+			log.Info("Got error while saving gist: %v", err)
+		} else {
+			log.Info("Saved gist: %s\n", g)
+			gistStore[key] = g
+		}
+	}
+}
+
 func main() {
 	initializeConfig()
 	port := opts.Port
@@ -189,6 +242,10 @@ func main() {
 	log.Info("Using Port=%s", port)
 	log.Info("Using Static Directory=%s", staticDir)
 	log.Info("Using Templates Directory=%s", templatesDir)
+
+	initializeGitClient()
+	//saveAsGist(githubClient, "abc.txt", "this is cool")
+	//saveAsGist(githubClient, "abc.txt", "this is fun")
 
 	schemaDecoder = schema.NewDecoder()
 	cuiSessions = map[string]*cui.Session{}
