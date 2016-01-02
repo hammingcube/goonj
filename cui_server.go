@@ -42,6 +42,10 @@ const ENV_STATIC_FILES_DIR = "CUI_STATIC_FILES_DIR"
 
 const DEFAULT_PORT = "1323"
 
+var (
+	throttle = time.Tick(1 * time.Second)
+)
+
 func initializeConfig() {
 	var oldUsage = flag.Usage
 	var newUsage = func() {
@@ -133,8 +137,9 @@ func saveSolution(c *echo.Context) *cui.Task {
 		panic(err)
 	}
 	//saveAsGist(githubClient, file, solnReq.Solution)
-	log.Info("Storing solution: %s\n", solnReq.Solution)
-	saveAsGist(githubClient, solnReq.Ticket, strings.Join([]string{solnReq.Task, filepath.Base(file)}, "-"), string(solnReq.Solution))
+	log.Info("Storing solution as gist: %s", solnReq.Solution)
+	storeKey, filename, filecontent := solnReq.Ticket, strings.Join([]string{solnReq.Task, filepath.Base(file)}, "-"), string(solnReq.Solution)
+	saveAsGist(githubClient, storeKey, filename, filecontent)
 	task.Src = file
 	task.CurrentSolution = solnReq.Solution
 	task.ProgLang = solnReq.ProgLang
@@ -193,42 +198,42 @@ var (
 )
 
 func initializeGitClient() {
+	log.Info("Gists key: %s", os.Getenv("THINK_GISTS_KEY"))
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: ""},
+		&oauth2.Token{AccessToken: os.Getenv("THINK_GISTS_KEY")},
 	)
 	tc := oauth2.NewClient(oauth2.NoContext, ts)
 	githubClient = github.NewClient(tc)
 }
 
 func saveAsGist(client *github.Client, key, filename, filecontent string) {
-	createGist := func(client *github.Client, desc string, files map[string]string) (*github.Gist, *github.Response, error) {
-		gfiles := map[github.GistFilename]github.GistFile{}
-		log.Info("Writing following files: %#v", files)
-		for fname, content := range files {
-			gfiles[github.GistFilename(fname)] = github.GistFile{Filename: &fname, Content: &content}
-		}
-		return client.Gists.Create(&github.Gist{
-			Description: &desc,
-			Files:       gfiles,
-		})
-	}
 	savedGist, ok := gistStore[key]
 	if !ok {
-		g, resp, err := createGist(client, "ThinkHike App", map[string]string{filename: filecontent, "meta.json": fmt.Sprintf(`{"key": "%s"}`, key)})
+		description := "Think Hike App"
+		metaFilename := "meta.json"
+		metaFilecontent := fmt.Sprintf(`{"key": "%s"}`, key)
+		gfiles := map[github.GistFilename]github.GistFile{
+			github.GistFilename(filename):     github.GistFile{Filename: &filename, Content: &filecontent},
+			github.GistFilename(metaFilename): github.GistFile{Filename: &metaFilename, Content: &metaFilecontent},
+		}
+		log.Info("Finally sending this across: %#v", gfiles)
+		g, _, err := client.Gists.Create(&github.Gist{
+			Description: &description,
+			Files:       gfiles,
+		})
 		if err != nil {
-			log.Info("Got error while creating gist: %v", err)
-			log.Info("Specifically, %s\n", resp)
+			log.Info("Got error while creating gist: %s", err)
 		} else {
-			log.Info("Created gist: %s\n", g)
+			log.Info("Created gist: %s", g)
 			gistStore[key] = g
 		}
 	} else {
 		savedGist.Files[github.GistFilename(filename)] = github.GistFile{Filename: &filename, Content: &filecontent}
 		g, _, err := client.Gists.Edit(*savedGist.ID, savedGist)
 		if err != nil {
-			log.Info("Got error while saving gist: %v", err)
+			log.Info("Got error while saving gist: %s", err)
 		} else {
-			log.Info("Saved gist: %s\n", g)
+			log.Info("Saved gist: %s", g)
 			gistStore[key] = g
 		}
 	}
