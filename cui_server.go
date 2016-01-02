@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/google/go-github/github"
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/oauth2"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/user"
@@ -197,10 +199,9 @@ var (
 	gistStore    = map[string]*github.Gist{}
 )
 
-func initializeGitClient() {
-	log.Info("Gists key: %s", os.Getenv("THINK_GISTS_KEY"))
+func initializeGitClient(secret string) {
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: os.Getenv("THINK_GISTS_KEY")},
+		&oauth2.Token{AccessToken: secret},
 	)
 	tc := oauth2.NewClient(oauth2.NoContext, ts)
 	githubClient = github.NewClient(tc)
@@ -239,6 +240,16 @@ func saveAsGist(client *github.Client, key, filename, filecontent string) {
 	}
 }
 
+func readDotEnv(root string) (map[string]string, error) {
+	env := map[string]string{}
+	read, err := ioutil.ReadFile(filepath.Join(root, ".env"))
+	if err != nil {
+		return map[string]string{}, err
+	}
+	err = json.Unmarshal(read, &env)
+	return env, err
+}
+
 func main() {
 	initializeConfig()
 	port := opts.Port
@@ -248,7 +259,20 @@ func main() {
 	log.Info("Using Static Directory=%s", staticDir)
 	log.Info("Using Templates Directory=%s", templatesDir)
 
-	initializeGitClient()
+	env, err := readDotEnv(opts.StaticFilesRoot)
+	if err != nil {
+		log.Fatal("Got error while reading dotenv: %v", err)
+		return
+	} else {
+		log.Info("Read env: %s", env)
+	}
+	secret, ok := env["THINK_GISTS_KEY"]
+	if !ok {
+		log.Fatal("Need github secret to proceed")
+		return
+	}
+
+	initializeGitClient(secret)
 	//saveAsGist(githubClient, "abc.txt", "this is cool")
 	//saveAsGist(githubClient, "abc.txt", "this is fun")
 
@@ -256,7 +280,6 @@ func main() {
 	cuiSessions = map[string]*cui.Session{}
 	tasks = map[cui.TaskKey]*cui.Task{}
 
-	var err error
 	TMP_DIR, err = getTmpWorkDir()
 	if err != nil {
 		log.Fatal("Failed to initialize tmp_dir: %v", err)
