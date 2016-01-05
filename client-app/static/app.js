@@ -7,6 +7,7 @@ function showLoggedInState(nickname) {
 
 function showStartCodingLink(data) {
   $("#the_link").attr("href", "cui/"+ data.ticket_id);
+  $("#the_link").attr("target", "_blank");
   $("#the_link").show();
 }
 
@@ -40,7 +41,7 @@ $(document).ready(function() {
         if (err) {
           // Error callback
           console.error("Something went wrong: ", err);
-          alert("Something went wrong, check the Console errors");
+          //alert("Something went wrong, check the Console errors");
         } else {
           // Success calback
           // Save the JWT token.
@@ -60,7 +61,7 @@ $(document).ready(function() {
 
   document.getElementById('btn-api').addEventListener('click', function() {
     // Just call your API here. The header will be sent
-    alert("Hello real world");
+    console.log("Hello real world");
     $.ajax({
       url: "/secured/ping",
       data: {"user_id": localStorage.getItem('userId')},
@@ -69,11 +70,11 @@ $(document).ready(function() {
       },
       error: function(err) {
         // error handler
-        alert(JSON.stringify(err));
+        console.log(JSON.stringify(err));
       },
       success: function(data) {
         // success handler
-        alert(JSON.stringify(data));
+        console.log(JSON.stringify(data));
         showStartCodingLink(data);
       }
     });
@@ -81,7 +82,7 @@ $(document).ready(function() {
 
   document.getElementById('btn-api-anon').addEventListener('click', function() {
     // Just call your API here. The header will be sent
-    alert("Hello anonymous user");
+    console.log("Hello anonymous user");
     $.ajax({
       url: "/cui/new",
       //data: {"user_id": localStorage.getItem('userId')},
@@ -90,11 +91,11 @@ $(document).ready(function() {
       },
       error: function(err) {
         // error handler
-        alert(JSON.stringify(err));
+        console.log(JSON.stringify(err));
       },
       success: function(data) {
         // success handler
-        alert(JSON.stringify(data));
+        console.log(JSON.stringify(data));
         showStartCodingLink(data);
       }
     });
