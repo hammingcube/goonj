@@ -169,7 +169,7 @@ func GetClock(sessions map[string]*Session, clkReq *ClockRequest) *ClockResponse
 
 func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 	key := TaskKey{val.Ticket, val.Task}
-	prg_lang_list, _ := json.Marshal([]string{"c", "cpp"})
+	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go"})
 	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
 	task := tasks[key]
 	if task == nil {

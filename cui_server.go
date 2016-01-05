@@ -131,7 +131,7 @@ func saveSolution(c *echo.Context) *cui.Task {
 
 	log.Info("%s %s task.ProgLang: %s, solnReq.ProgLang: %s", c.Request().Method, c.Request().URL, task.ProgLang, solnReq.ProgLang)
 
-	ext := map[string]string{"cpp": "cpp", "c": "c"}[solnReq.ProgLang]
+	ext := map[string]string{"cpp": "cpp", "c": "c", "py2": "py", "py3": "py", "go": "go"}[solnReq.ProgLang]
 	file := fmt.Sprintf("%s/%s/%s/main.%s", TMP_DIR, solnReq.Ticket, solnReq.Task, ext)
 	log.Info("Writing soln to %s", file)
 	err := utils.UpdateFile(file, solnReq.Solution)
