@@ -42,7 +42,7 @@ func assignString(v *string, args ...string) {
 const ENV_PORT_NAME = "CUI_PORT"
 const ENV_STATIC_FILES_DIR = "CUI_STATIC_FILES_DIR"
 
-const DEFAULT_PORT = "1323"
+const DEFAULT_PORT = "3000"
 
 var (
 	throttle = time.Tick(1 * time.Second)
@@ -141,7 +141,9 @@ func saveSolution(c *echo.Context) *cui.Task {
 	//saveAsGist(githubClient, file, solnReq.Solution)
 	log.Info("Storing solution as gist: %s", solnReq.Solution)
 	storeKey, filename, filecontent := solnReq.Ticket, strings.Join([]string{solnReq.Task, filepath.Base(file)}, "-"), string(solnReq.Solution)
-	saveAsGist(githubClient, storeKey, filename, filecontent)
+	user, ok := userContexts[solnReq.Ticket]
+	log.Info("ticket, user, ok: %s, %v, %v", solnReq.Ticket, user, ok)
+	saveAsGist(user.githubClient, storeKey, filename, filecontent)
 	task.Src = file
 	task.CurrentSolution = solnReq.Solution
 	task.ProgLang = solnReq.ProgLang
@@ -151,6 +153,11 @@ func saveSolution(c *echo.Context) *cui.Task {
 func addCuiHandlers(e *echo.Echo) {
 	c := e.Group("/c")
 	c.Post("/_start", func(c *echo.Context) error {
+		session, ok := cuiSessions[c.Form("ticket")]
+		if !ok {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Attempt to start an invalid session")
+		}
+		session.StartTime = time.Now()
 		return c.String(http.StatusOK, "Started")
 	})
 	c.Post("/_get_task", func(c *echo.Context) error {
@@ -199,12 +206,12 @@ var (
 	gistStore    = map[string]*github.Gist{}
 )
 
-func initializeGitClient(secret string) {
+func NewGitHubClient(secret string) *github.Client {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: secret},
 	)
 	tc := oauth2.NewClient(oauth2.NoContext, ts)
-	githubClient = github.NewClient(tc)
+	return github.NewClient(tc)
 }
 
 func saveAsGist(client *github.Client, key, filename, filecontent string) {
@@ -250,6 +257,18 @@ func readDotEnv(root string) (map[string]string, error) {
 	return env, err
 }
 
+type Ticket struct {
+	Id string
+}
+
+type UserContext struct {
+	githubClient *github.Client
+}
+
+var (
+	userContexts = map[string]*UserContext{}
+)
+
 func main() {
 	initializeConfig()
 	port := opts.Port
@@ -266,13 +285,18 @@ func main() {
 	} else {
 		log.Info("Read env: %s", env)
 	}
-	secret, ok := env["THINK_GISTS_KEY"]
+	THINK_GISTS_KEY, ok := env["THINK_GISTS_KEY"]
 	if !ok {
 		log.Fatal("Need github secret to proceed")
 		return
 	}
+	AUTH0_TOKEN, ok := env["AUTH0_TOKEN"]
+	if !ok {
+		log.Fatal("Need AUTH0 token to proceed")
+		return
+	}
 
-	initializeGitClient(secret)
+	//initializeGitClient(secret)
 	//saveAsGist(githubClient, "abc.txt", "this is cool")
 	//saveAsGist(githubClient, "abc.txt", "this is fun")
 
@@ -303,15 +327,82 @@ func main() {
 	//e.Use(mw.Recover())
 
 	// Routes
+	e.Index(filepath.Join(opts.StaticFilesRoot, "client-app/index.html"))
+	e.Static("/static/", filepath.Join(opts.StaticFilesRoot, "client-app/static"))
+
+	// Initial API call
+	e.Get("/secured/ping", func(c *echo.Context) error {
+		user_id := c.Query("user_id")
+		log.Info("user_id: %s", user_id)
+		url := fmt.Sprintf("https://thinkhike.auth0.com/api/v2/users/%s", user_id)
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", url, nil)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", AUTH0_TOKEN))
+		q := req.URL.Query()
+		q.Add("fields", "identities")
+		req.URL.RawQuery = q.Encode()
+		resp, err := client.Do(req)
+		log.Info("Request: %v", resp.StatusCode)
+		errorStr := ""
+		if err != nil {
+			errorStr = fmt.Sprintf("Error : %s", err)
+			log.Error("Req error: %v", err)
+		}
+		defer resp.Body.Close()
+		type Auth0Data struct {
+			Identities []struct {
+				AccessToken *string `json:"access_token"`
+			}
+		}
+		expected := &struct {
+			Ticket string `json:"ticket_id"`
+			Error  string
+			Data   *Auth0Data
+		}{
+			Error: "",
+			Data:  &Auth0Data{},
+		}
+		err = json.NewDecoder(resp.Body).Decode(expected.Data)
+		if err != nil {
+			log.Error("Decode error: %v", err)
+			errorStr += fmt.Sprintf(", %s", err)
+		}
+		expected.Error = errorStr
+		log.Info("Got: access token: %s", *expected.Data.Identities[0].AccessToken)
+		USER_GH_TOKEN := *expected.Data.Identities[0].AccessToken
+		user := &UserContext{githubClient: NewGitHubClient(USER_GH_TOKEN)}
+		ticket := &Ticket{RandId()}
+		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now()}
+		userContexts[ticket.Id] = user
+		expected.Ticket = ticket.Id
+		return c.JSON(http.StatusOK, expected)
+	})
+
+	// Remaining routes
 	e.Get("/hello", hello)
 	e.Static("/static/cui", staticDir)
-	e.Get("/cui", func(c *echo.Context) error {
-		type Ticket struct {
-			Id string
+	e.Get("/cui/:ticket_id", func(c *echo.Context) error {
+		ticket_id := c.Param("ticket_id")
+		log.Info("Ticket: %s", ticket_id)
+		session, ok := cuiSessions[ticket_id]
+		if !ok {
+			return echo.NewHTTPError(http.StatusNotFound, "No valid session found")
 		}
+		if time.Now().Sub(session.Created) > time.Duration(5*time.Minute) {
+			return echo.NewHTTPError(http.StatusNotFound, "Session Expired")
+		}
+		if !session.Started {
+			session.Started = true
+		}
+		log.Info("Session Started? %v", session.Started)
+		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": &Ticket{ticket_id}})
+	})
+	e.Get("/cui/new", func(c *echo.Context) error {
+		user := &UserContext{githubClient: NewGitHubClient(THINK_GISTS_KEY)}
 		ticket := &Ticket{RandId()}
-		cuiSessions[ticket.Id] = &cui.Session{StartTime: time.Now(), TimeLimit: 3600}
-		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": ticket})
+		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now()}
+		userContexts[ticket.Id] = user
+		return c.JSON(http.StatusOK, map[string]string{"ticket_id": ticket.Id})
 	})
 
 	addCuiHandlers(e)

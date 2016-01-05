@@ -76,6 +76,8 @@ type ClientGetTaskMsg struct {
 
 type Session struct {
 	StartTime time.Time
+	Created   time.Time
+	Started   bool
 	TimeLimit int
 }
 
