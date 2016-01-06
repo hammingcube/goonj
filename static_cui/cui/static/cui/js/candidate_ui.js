@@ -934,6 +934,7 @@ function CandidateUi(options)
 
         $('#current_prg_lang option').remove();
         $.each(self.current_prg_lang_list, function (i, pl) {
+            console.log(self.options);
             var name = self.options.prg_langs[pl].name;
             var $option = $('<option>').attr('value', pl).text(name);
             $('#current_prg_lang').append($option);

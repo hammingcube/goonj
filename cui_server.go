@@ -191,6 +191,8 @@ func addCuiHandlers(e *echo.Echo) {
 	})
 
 	chk.Post("/verify", func(c *echo.Context) error {
+		c.Form("task")
+		log.Info("/verify: %#v", c.Request().Form)
 		task := saveSolution(c)
 		return c.XML(http.StatusOK, cui.GetVerifyStatus(task))
 	})
@@ -258,7 +260,8 @@ func readDotEnv(root string) (map[string]string, error) {
 }
 
 type Ticket struct {
-	Id string
+	Id      string
+	Options *cui.Options
 }
 
 type UserContext struct {
@@ -371,7 +374,7 @@ func main() {
 		log.Info("Got: access token: %s", *expected.Data.Identities[0].AccessToken)
 		USER_GH_TOKEN := *expected.Data.Identities[0].AccessToken
 		user := &UserContext{githubClient: NewGitHubClient(USER_GH_TOKEN)}
-		ticket := &Ticket{RandId()}
+		ticket := &Ticket{Id: RandId()}
 		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now()}
 		userContexts[ticket.Id] = user
 		expected.Ticket = ticket.Id
@@ -395,11 +398,11 @@ func main() {
 			session.Started = true
 		}
 		log.Info("Session Started? %v", session.Started)
-		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": &Ticket{ticket_id}})
+		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": &Ticket{Id: ticket_id}})
 	})
 	e.Get("/cui/new", func(c *echo.Context) error {
 		user := &UserContext{githubClient: NewGitHubClient(THINK_GISTS_KEY)}
-		ticket := &Ticket{RandId()}
+		ticket := &Ticket{Id: RandId()}
 		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now()}
 		userContexts[ticket.Id] = user
 		return c.JSON(http.StatusOK, map[string]string{"ticket_id": ticket.Id})

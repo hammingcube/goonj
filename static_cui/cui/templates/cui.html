@@ -167,7 +167,12 @@
         ////////////////////INITIALIZATION////////////////////////
        
       $(document).ready(function() {
-            var local_ui_options =     {
+
+
+        
+        
+
+        var local_ui_options =     {
         ticket_id: {{ .Ticket.Id }},
 
         time_elapsed_sec: 15,
@@ -210,9 +215,10 @@
             "start_ticket": "/c/_start/"
         },
     };
+    var ui_options = {{.Ticket.Options}} || local_ui_options;
             //window.server = LocalServer();
             //server.init();
-            window.ui = CandidateUi(local_ui_options);
+            window.ui = CandidateUi(ui_options);
             ui.init();
             ui.exit = function(url) {
               window.alert("CUI exiting; next page would be '"+ url +"'. \n\n" +
