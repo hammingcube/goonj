@@ -155,11 +155,25 @@ type MainStatus struct {
 type VerifyStatus struct {
 	XMLName xml.Name   `xml:"response"`
 	Result  string     `xml:"result"`
+	Message string     `xml:"message"`
+	Id      string     `xml:"id"`
+	Delay   int        `xml:"delay"`
 	Extra   MainStatus `xml:"extra"`
 	//NextTask string     `xml:"next_task"`
 }
 
+func laterReply() *VerifyStatus {
+	resp := &VerifyStatus{
+		Result:  "LATER",
+		Message: "We are still evaluating the solution",
+		Id:      "submission_id: 23e3",
+		Delay:   60,
+	}
+	return resp
+}
+
 func GetVerifyStatus(task *Task) *VerifyStatus {
+	return laterReply()
 	resp := &VerifyStatus{
 		Result: "OK",
 		Extra: MainStatus{

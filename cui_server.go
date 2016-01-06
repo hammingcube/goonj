@@ -205,6 +205,12 @@ func addCuiHandlers(e *echo.Echo) {
 		task := saveSolution(c)
 		return c.XML(http.StatusOK, cui.GetVerifyStatus(task))
 	})
+
+	chk.Post("/status", func(c *echo.Context) error {
+		c.Form("task")
+		log.Info("/status: %#v", c.Request().Form)
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(nil))
+	})
 }
 
 var (
