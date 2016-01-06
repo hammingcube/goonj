@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"github.com/labstack/gommon/log"
 	"github.com/maddyonline/goonj/runner"
-	"html/template"
-	"os"
+	"github.com/maddyonline/goonj/utils"
 	"time"
 )
 
@@ -37,28 +36,66 @@ type Options struct {
 	Urls             map[string]string    `json:"urls"`
 }
 
-const tmpl = `var local_ui_options = {{.}}`
+type Ticket struct {
+	Id      string
+	Options *Options
+}
 
-func Render(opts *Options) {
-	const tpl = `
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-    </head>
-    <body>
-    <script>var local_ui_options = {{.}}</script>
-    </body>
-</html>`
-	check := func(err error) {
-		if err != nil {
-			log.Fatal(err)
-		}
+type Session struct {
+	Ticket    *Ticket
+	StartTime time.Time
+	Created   time.Time
+	Started   bool
+	TimeLimit int
+}
+
+func NewTicket(opts *Options) *Ticket {
+	id := utils.RandId()
+	if opts == nil {
+		opts = DefaultOptions()
 	}
-	t, err := template.New("webpage").Parse(tpl)
-	check(err)
-	err = t.Execute(os.Stdout, opts)
-	check(err)
+	opts.TicketId = id
+	return &Ticket{Id: id, Options: opts}
+}
+
+func DefaultOptions() *Options {
+	opts := &Options{
+		TicketId:         "",
+		TimeElapsed:      5,
+		TimeRemaining:    3600,
+		CurrentHumanLang: "en",
+		CurrentProgLang:  "c",
+		CurrentTaskName:  "task1",
+		TaskNames:        []string{"task1", "task2", "task3"},
+		HumanLangList: map[string]HumanLang{
+			"en": HumanLang{Name: "English"},
+			"cn": HumanLang{Name: "\u4e2d\u6587"},
+		},
+		ProgLangList: map[string]ProgLang{
+			"c":   ProgLang{Version: "C", Name: "C"},
+			"cpp": ProgLang{Version: "C++", Name: "C++"},
+			"py2": ProgLang{Version: "py2", Name: "Python 2"},
+			"py3": ProgLang{Version: "py3", Name: "Python 3"},
+			"go":  ProgLang{Version: "go", Name: "Go"},
+		},
+		ShowSurvey:  false,
+		ShowWelcome: false,
+		Sequential:  false,
+		SaveOften:   true,
+		Urls: map[string]string{
+			"status":         "/chk/status/",
+			"get_task":       "/c/_get_task/",
+			"submit_survey":  "/surveys/_ajax_submit_candidate_survey/TICKET_ID/",
+			"clock":          "/chk/clock/",
+			"close":          "/c/close/TICKET_ID",
+			"verify":         "/chk/verify/",
+			"save":           "/chk/save/",
+			"timeout_action": "/chk/timeout_action/",
+			"final":          "/chk/final/",
+			"start_ticket":   "/c/_start/",
+		},
+	}
+	return opts
 }
 
 type TaskKey struct {
@@ -72,13 +109,6 @@ type ClientGetTaskMsg struct {
 	ProgLang             string
 	HumanLang            string
 	PreferServerProgLang bool
-}
-
-type Session struct {
-	StartTime time.Time
-	Created   time.Time
-	Started   bool
-	TimeLimit int
 }
 
 type Task struct {
@@ -195,45 +225,3 @@ func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 	task.HumanLang = val.HumanLang
 	return task
 }
-
-const expected = `{
-        ticket_id: "TICKET_ID",
-
-        time_elapsed_sec: 15,
-        time_remaining_sec: 1800,
-
-        current_human_lang: "en",
-        current_prg_lang: "c",
-        current_task_name: "task1",
-
-        task_names: ["task1", "task2", "task3"],
-
-        human_langs: {
-            "en": {"name_in_itself": "English"},
-            "cn": {"name_in_itself": "\u4e2d\u6587"},
-        },
-        prg_langs: {
-            "c": {"version": "C", "name": "C"},
-            "sql": {"version": "SQL", "name": "SQL"},
-            "cpp": {"version": "C++", "name": "C++"},
-        },
-
-        show_survey: true,
-        show_help: false,
-        show_welcome: true,
-        sequential: false,
-        save_often: true,
-
-        urls: {
-            "status": "/chk/status/",
-            "get_task": "/c/_get_task/",
-            "submit_survey": "/surveys/_ajax_submit_candidate_survey/TICKET_ID/",
-            "clock": "/chk/clock/",
-            "close": "/c/close/TICKET_ID",
-            "verify": "/chk/verify/",
-            "save": "/chk/save/",
-            "timeout_action": "/chk/timeout_action/",
-            "final": "/chk/final/",
-            "start_ticket": "/c/_start/"
-        },
-        }`

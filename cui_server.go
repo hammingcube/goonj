@@ -10,7 +10,7 @@ import (
 	mw "github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/maddyonline/goonj/cui"
-	"github.com/maddyonline/hey/utils"
+	"github.com/maddyonline/goonj/utils"
 	"golang.org/x/oauth2"
 	"html/template"
 	"io"
@@ -72,6 +72,10 @@ func initializeConfig() {
 		}
 	}
 	assignString(&opts.StaticFilesRoot, opts.StaticFilesRoot, os.Getenv(ENV_STATIC_FILES_DIR), defaultDir)
+}
+
+type UserContext struct {
+	githubClient *github.Client
 }
 
 type (
@@ -259,15 +263,6 @@ func readDotEnv(root string) (map[string]string, error) {
 	return env, err
 }
 
-type Ticket struct {
-	Id      string
-	Options *cui.Options
-}
-
-type UserContext struct {
-	githubClient *github.Client
-}
-
 var (
 	userContexts = map[string]*UserContext{}
 )
@@ -374,8 +369,8 @@ func main() {
 		log.Info("Got: access token: %s", *expected.Data.Identities[0].AccessToken)
 		USER_GH_TOKEN := *expected.Data.Identities[0].AccessToken
 		user := &UserContext{githubClient: NewGitHubClient(USER_GH_TOKEN)}
-		ticket := &Ticket{Id: RandId()}
-		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now()}
+		ticket := cui.NewTicket(nil)
+		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now(), Ticket: ticket}
 		userContexts[ticket.Id] = user
 		expected.Ticket = ticket.Id
 		return c.JSON(http.StatusOK, expected)
@@ -398,12 +393,12 @@ func main() {
 			session.Started = true
 		}
 		log.Info("Session Started? %v", session.Started)
-		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": &Ticket{Id: ticket_id}})
+		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": session.Ticket})
 	})
 	e.Get("/cui/new", func(c *echo.Context) error {
 		user := &UserContext{githubClient: NewGitHubClient(THINK_GISTS_KEY)}
-		ticket := &Ticket{Id: RandId()}
-		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now()}
+		ticket := cui.NewTicket(nil)
+		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now(), Ticket: ticket}
 		userContexts[ticket.Id] = user
 		return c.JSON(http.StatusOK, map[string]string{"ticket_id": ticket.Id})
 	})
