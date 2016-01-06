@@ -172,8 +172,15 @@ func laterReply() *VerifyStatus {
 	return resp
 }
 
-func GetVerifyStatus(task *Task) *VerifyStatus {
-	return laterReply()
+type Mode int
+
+const (
+	VERIFY Mode = iota
+	JUDGE
+)
+
+func GetVerifyStatus(task *Task, mode Mode) *VerifyStatus {
+	//return laterReply()
 	resp := &VerifyStatus{
 		Result: "OK",
 		Extra: MainStatus{
@@ -184,8 +191,15 @@ func GetVerifyStatus(task *Task) *VerifyStatus {
 	if task == nil {
 		return resp
 	}
-	out, err := runner.RunIt(task.Src, task.ProgLang)
-	log.Info("In GetVerifyStatus, got out=%q, err=%v", string(out), err)
+
+	runnerFunc := map[Mode]func(a, b string) ([]byte, error){
+		VERIFY: runner.JudgeIt,
+		JUDGE:  runner.JudgeIt,
+	}[mode]
+
+	out, err := runnerFunc(task.Src, task.ProgLang)
+	log.Info("In VerifyStatus, mode=%v, got out=%q, err=%v", mode, string(out), err)
+
 	resp.Extra.Example.Message = string(out)
 	if err != nil {
 		resp.Extra.Example.Message = resp.Extra.Example.Message + "\n" + fmt.Sprintf("%s", err)

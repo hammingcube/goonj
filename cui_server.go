@@ -198,18 +198,21 @@ func addCuiHandlers(e *echo.Echo) {
 		c.Form("task")
 		log.Info("/verify: %#v", c.Request().Form)
 		task := saveSolution(c)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(task))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(task, cui.VERIFY))
 	})
 
 	chk.Post("/final", func(c *echo.Context) error {
+		log.Info("In /final")
+		c.Form("task")
+		log.Info("/final: %#v", c.Request().Form)
 		task := saveSolution(c)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(task))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(task, cui.JUDGE))
 	})
 
 	chk.Post("/status", func(c *echo.Context) error {
 		c.Form("task")
 		log.Info("/status: %#v", c.Request().Form)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(nil))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(nil, cui.VERIFY))
 	})
 }
 
