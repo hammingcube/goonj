@@ -3,10 +3,12 @@ package cui
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/labstack/gommon/log"
-	"github.com/maddyonline/goonj/runner"
+	"github.com/maddyonline/code"
 	"github.com/maddyonline/goonj/utils"
+	"io/ioutil"
 	"time"
 )
 
@@ -179,8 +181,9 @@ const (
 	JUDGE
 )
 
-func GetVerifyStatus(task *Task, mode Mode) *VerifyStatus {
+func GetVerifyStatus(runner *code.Runner, task *Task, mode Mode) *VerifyStatus {
 	//return laterReply()
+	var cerr error
 	resp := &VerifyStatus{
 		Result: "OK",
 		Extra: MainStatus{
@@ -191,18 +194,24 @@ func GetVerifyStatus(task *Task, mode Mode) *VerifyStatus {
 	if task == nil {
 		return resp
 	}
-
-	runnerFunc := map[Mode]func(a, b string) ([]byte, error){
-		VERIFY: runner.JudgeIt,
-		JUDGE:  runner.JudgeIt,
-	}[mode]
-
-	out, err := runnerFunc(task.Src, task.ProgLang)
-	log.Info("In VerifyStatus, mode=%v, got out=%q, err=%v", mode, string(out), err)
-
-	resp.Extra.Example.Message = string(out)
+	content, err := ioutil.ReadFile(task.Src)
 	if err != nil {
-		resp.Extra.Example.Message = resp.Extra.Example.Message + "\n" + fmt.Sprintf("%s", err)
+		cerr = errors.New("Internal Server Error")
+	} else {
+		ext := map[string]string{"cpp": "cpp", "c": "cpp", "py2": "py", "py3": "py", "go": "go"}[task.ProgLang]
+		language := map[string]string{"cpp": "cpp", "c": "cpp"}[task.ProgLang]
+		name := fmt.Sprintf("main.%s", ext)
+		input := code.MakeInput(language, name, string(content), code.StdinFile(""))
+		log.Info("In verify status, input: %s", input)
+		out, err := runner.Run(input)
+		if err != nil {
+			cerr = err
+		}
+		log.Info("In VerifyStatus, mode=%v, got stdout=%q, stderr=%q, err=%v", mode, out.Stdout, out.Stderr, err)
+		resp.Extra.Example.Message = "stdout:" + out.Stdout + " stderr: " + out.Stderr
+	}
+	if cerr != nil {
+		resp.Extra.Example.Message = resp.Extra.Example.Message + "\n" + fmt.Sprintf("%v", cerr)
 		resp.Extra.Example.OK = 0
 	} else {
 		resp.Extra.Example.OK = 1

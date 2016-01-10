@@ -47,3 +47,14 @@ func UpdateFile(file, val string) error {
 	ioutil.WriteFile(filepath.Join(dir, filepath.Base(file)), []byte(val), 0777)
 	return nil
 }
+
+func DefaultDir(path string) string {
+	defaultDir := "."
+	if GOPATH := os.Getenv("GOPATH"); GOPATH != "" {
+		srcDir, err := filepath.Abs(filepath.Join(GOPATH, path))
+		if err == nil {
+			defaultDir = srcDir
+		}
+	}
+	return defaultDir
+}

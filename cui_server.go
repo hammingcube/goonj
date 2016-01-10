@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/maddyonline/code"
 	"github.com/maddyonline/goonj/cui"
 	"github.com/maddyonline/goonj/utils"
 	"golang.org/x/oauth2"
@@ -25,9 +26,10 @@ import (
 
 var schemaDecoder *schema.Decoder
 
-var opts struct {
+var Opts struct {
 	Port            string
 	StaticFilesRoot string
+	RunnerPath      string
 }
 
 func assignString(v *string, args ...string) {
@@ -41,6 +43,7 @@ func assignString(v *string, args ...string) {
 
 const ENV_PORT_NAME = "CUI_PORT"
 const ENV_STATIC_FILES_DIR = "CUI_STATIC_FILES_DIR"
+const ENV_RUNNER_PATH = "CUI_RUNNER_PATH"
 
 const DEFAULT_PORT = "3000"
 
@@ -56,22 +59,14 @@ func initializeConfig() {
 	}
 	flag.Usage = newUsage
 
-	flag.StringVar(&opts.Port, "port", "", "Port on which server runs")
-	flag.StringVar(&opts.StaticFilesRoot, "static", "", "Path to static directory")
+	flag.StringVar(&Opts.Port, "port", "", "Port on which server runs")
+	flag.StringVar(&Opts.StaticFilesRoot, "static", "", "Path to static directory")
+	flag.StringVar(&Opts.RunnerPath, "runner", "", "Path to runner binary")
 	flag.Parse()
+	assignString(&Opts.Port, Opts.Port, os.Getenv(ENV_PORT_NAME), DEFAULT_PORT)
+	assignString(&Opts.StaticFilesRoot, Opts.StaticFilesRoot, os.Getenv(ENV_STATIC_FILES_DIR), utils.DefaultDir("src/github.com/maddyonline/goonj"))
+	assignString(&Opts.RunnerPath, Opts.RunnerPath, os.Getenv(ENV_RUNNER_PATH), utils.DefaultDir("src/github.com/maddyonline/code"))
 
-	// Configure opts.Port
-	assignString(&opts.Port, opts.Port, os.Getenv(ENV_PORT_NAME), DEFAULT_PORT)
-
-	// Configure opts.StaticFilesRoot
-	defaultDir := "."
-	if GOPATH := os.Getenv("GOPATH"); GOPATH != "" {
-		srcDir, err := filepath.Abs(filepath.Join(GOPATH, "src/github.com/maddyonline/goonj"))
-		if err == nil {
-			defaultDir = srcDir
-		}
-	}
-	assignString(&opts.StaticFilesRoot, opts.StaticFilesRoot, os.Getenv(ENV_STATIC_FILES_DIR), defaultDir)
 }
 
 type UserContext struct {
@@ -198,7 +193,7 @@ func addCuiHandlers(e *echo.Echo) {
 		c.Form("task")
 		log.Info("/verify: %#v", c.Request().Form)
 		task := saveSolution(c)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(task, cui.VERIFY))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, cui.VERIFY))
 	})
 
 	chk.Post("/final", func(c *echo.Context) error {
@@ -206,13 +201,13 @@ func addCuiHandlers(e *echo.Echo) {
 		c.Form("task")
 		log.Info("/final: %#v", c.Request().Form)
 		task := saveSolution(c)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(task, cui.JUDGE))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, cui.JUDGE))
 	})
 
 	chk.Post("/status", func(c *echo.Context) error {
 		c.Form("task")
 		log.Info("/status: %#v", c.Request().Form)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(nil, cui.VERIFY))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, nil, cui.VERIFY))
 	})
 }
 
@@ -274,18 +269,23 @@ func readDotEnv(root string) (map[string]string, error) {
 
 var (
 	userContexts = map[string]*UserContext{}
+	runner       *code.Runner
 )
 
 func main() {
 	initializeConfig()
-	port := opts.Port
-	staticDir := filepath.Join(opts.StaticFilesRoot, "static_cui/cui/static/cui")
-	templatesDir := filepath.Join(opts.StaticFilesRoot, "static_cui/cui/templates")
+	Opts.RunnerPath, _ = filepath.Abs(Opts.RunnerPath)
+	port := Opts.Port
+	staticDir := filepath.Join(Opts.StaticFilesRoot, "static_cui/cui/static/cui")
+	templatesDir := filepath.Join(Opts.StaticFilesRoot, "static_cui/cui/templates")
 	log.Info("Using Port=%s", port)
 	log.Info("Using Static Directory=%s", staticDir)
 	log.Info("Using Templates Directory=%s", templatesDir)
+	log.Info("Using runner=%s", Opts.RunnerPath)
 
-	env, err := readDotEnv(opts.StaticFilesRoot)
+	runner = code.NewRunner(Opts.RunnerPath)
+
+	env, err := readDotEnv(Opts.StaticFilesRoot)
 	if err != nil {
 		log.Fatal("Got error while reading dotenv: %v", err)
 		return
@@ -334,8 +334,8 @@ func main() {
 	//e.Use(mw.Recover())
 
 	// Routes
-	e.Index(filepath.Join(opts.StaticFilesRoot, "client-app/index.html"))
-	e.Static("/static/", filepath.Join(opts.StaticFilesRoot, "client-app/static"))
+	e.Index(filepath.Join(Opts.StaticFilesRoot, "client-app/index.html"))
+	e.Static("/static/", filepath.Join(Opts.StaticFilesRoot, "client-app/static"))
 
 	// Initial API call
 	e.Get("/secured/ping", func(c *echo.Context) error {
