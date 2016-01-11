@@ -114,39 +114,45 @@ func getTmpWorkDir() (string, error) {
 	return utils.CreateDirIfReqd(filepath.Join(u.HomeDir, "goonj-workdir"))
 }
 
-func saveSolution(c *echo.Context) *cui.Task {
+func saveSolution(c *echo.Context) (*cui.Task, *cui.SolutionRequest) {
 	solnReq := &cui.SolutionRequest{
-		Ticket:   c.Form("ticket"),
-		Task:     c.Form("task"),
-		ProgLang: c.Form("prg_lang"),
-		Solution: c.Form("solution"),
+		Ticket:    c.Form("ticket"),
+		Task:      c.Form("task"),
+		ProgLang:  c.Form("prg_lang"),
+		Solution:  c.Form("solution"),
+		TestData0: c.Form("test_data0"),
 	}
-	log.Info("%s %s Form: %#v", c.Request().Method, c.Request().URL, solnReq)
-	log.Info("%s %s prg_lang: %s", c.Request().Method, c.Request().URL, c.Form("prg_lang"))
+	log.Info("%s %s: Form: %#v", c.Request().Method, c.Request().URL, solnReq)
 	task, ok := tasks[cui.TaskKey{solnReq.Ticket, solnReq.Task}]
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
-	log.Info("%s %s task.ProgLang: %s, solnReq.ProgLang: %s", c.Request().Method, c.Request().URL, task.ProgLang, solnReq.ProgLang)
+	log.Info("%s %s: Updating task.ProgLang from %s to %s", c.Request().Method, c.Request().URL, task.ProgLang, solnReq.ProgLang)
+	log.Info("%s %s: Updating task.CurrentSolution from %q to %q", c.Request().Method, c.Request().URL, task.CurrentSolution, solnReq.Solution)
 
-	ext := map[string]string{"cpp": "cpp", "c": "c", "py2": "py", "py3": "py", "go": "go"}[solnReq.ProgLang]
-	file := fmt.Sprintf("%s/%s/%s/main.%s", TMP_DIR, solnReq.Ticket, solnReq.Task, ext)
-	log.Info("Writing soln to %s", file)
-	err := utils.UpdateFile(file, solnReq.Solution)
-	if err != nil {
-		panic(err)
-	}
-	//saveAsGist(githubClient, file, solnReq.Solution)
-	log.Info("Storing solution as gist: %s", solnReq.Solution)
-	storeKey, filename, filecontent := solnReq.Ticket, strings.Join([]string{solnReq.Task, filepath.Base(file)}, "-"), string(solnReq.Solution)
-	user, ok := userContexts[solnReq.Ticket]
-	log.Info("ticket, user, ok: %s, %v, %v", solnReq.Ticket, user, ok)
-	saveAsGist(user.githubClient, storeKey, filename, filecontent)
-	task.Src = file
-	task.CurrentSolution = solnReq.Solution
 	task.ProgLang = solnReq.ProgLang
-	return task
+	task.CurrentSolution = solnReq.Solution
+
+	filename := fmt.Sprintf("%s/%s/%s/%s", TMP_DIR, solnReq.Ticket, solnReq.Task, cui.FileNameForCode(solnReq.ProgLang))
+	func() {
+		// Maybe make it a go-routine?
+		log.Info("%s %s: Writing soln locally to %s", c.Request().Method, c.Request().URL, filename)
+		err := utils.UpdateFile(filename, solnReq.Solution)
+		if err != nil {
+			panic(err)
+		}
+		log.Info("%s %s: Updating Task.Src to %s", c.Request().Method, c.Request().URL, filename)
+		task.Src = filename
+	}()
+	func() {
+		log.Info("%s %s: Storing the following solution as gist: %q", c.Request().Method, c.Request().URL, solnReq.Solution)
+		storeKey, filename, filecontent := solnReq.Ticket, strings.Join([]string{solnReq.Task, filepath.Base(filename)}, "-"), string(solnReq.Solution)
+		user, ok := userContexts[solnReq.Ticket]
+		log.Info("ticket, user, ok: %s, %v, %v", solnReq.Ticket, user, ok)
+		saveAsGist(user.githubClient, storeKey, filename, filecontent)
+	}()
+	return task, solnReq
 }
 
 func addCuiHandlers(e *echo.Echo) {
@@ -192,22 +198,22 @@ func addCuiHandlers(e *echo.Echo) {
 	chk.Post("/verify", func(c *echo.Context) error {
 		c.Form("task")
 		log.Info("/verify: %#v", c.Request().Form)
-		task := saveSolution(c)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, cui.VERIFY))
+		task, solnReq := saveSolution(c)
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, solnReq, cui.VERIFY))
 	})
 
 	chk.Post("/final", func(c *echo.Context) error {
 		log.Info("In /final")
 		c.Form("task")
 		log.Info("/final: %#v", c.Request().Form)
-		task := saveSolution(c)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, cui.JUDGE))
+		task, solnReq := saveSolution(c)
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, solnReq, cui.JUDGE))
 	})
 
 	chk.Post("/status", func(c *echo.Context) error {
 		c.Form("task")
 		log.Info("/status: %#v", c.Request().Form)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, nil, cui.VERIFY))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, nil, nil, cui.VERIFY))
 	})
 }
 

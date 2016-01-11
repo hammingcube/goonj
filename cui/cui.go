@@ -9,6 +9,7 @@ import (
 	"github.com/maddyonline/code"
 	"github.com/maddyonline/goonj/utils"
 	"io/ioutil"
+	"path/filepath"
 	"time"
 )
 
@@ -140,10 +141,15 @@ type ClockResponse struct {
 }
 
 type SolutionRequest struct {
-	Ticket   string `schema:"ticket"`
-	Task     string `schema:"task"`
-	ProgLang string `scheam:"prg_lang"`
-	Solution string `schema:"solution"`
+	Ticket    string `schema:"ticket"`
+	Task      string `schema:"task"`
+	ProgLang  string `scheam:"prg_lang"`
+	Solution  string `schema:"solution"`
+	TestData0 string `schema:"test_data0"`
+	TestData1 string `schema:"test_data1"`
+	TestData2 string `schema:"test_data2"`
+	TestData3 string `schema:"test_data3"`
+	TestData4 string `schema:"test_data4"`
 }
 
 type Status struct {
@@ -151,8 +157,13 @@ type Status struct {
 	Message string `xml:"message"`
 }
 type MainStatus struct {
-	Compile Status `xml:"compile"`
-	Example Status `xml:"example"`
+	Compile   Status `xml:"compile"`
+	Example   Status `xml:"example"`
+	TestData0 Status `xml:"test_data0"`
+	TestData1 Status `xml:"test_data1"`
+	TestData2 Status `xml:"test_data2"`
+	TestData3 Status `xml:"test_data3"`
+	TestData4 Status `xml:"test_data4"`
 }
 type VerifyStatus struct {
 	XMLName xml.Name   `xml:"response"`
@@ -181,14 +192,48 @@ const (
 	JUDGE
 )
 
-func GetVerifyStatus(runner *code.Runner, task *Task, mode Mode) *VerifyStatus {
+func FileNameForCode(progLang string) string {
+	ext := map[string]string{
+		"cpp": "cpp",
+		"c":   "cpp",
+		"py2": "py",
+		"py3": "py",
+		"go":  "go",
+	}[progLang]
+	return fmt.Sprintf("main.%s", ext)
+}
+
+func LanguageForRunner(progLang string) string {
+	return map[string]string{
+		"c":          "cpp",
+		"cpp":        "cpp",
+		"go":         "go",
+		"javascript": "javascript",
+		"py2":        "python",
+		"py3":        "python",
+	}[progLang]
+}
+
+func errorResponse(err error, v *VerifyStatus) *VerifyStatus {
+	v.Extra.Compile.OK = 0
+	v.Extra.Compile.Message = fmt.Sprintf("Something went wrong: %v", err)
+	v.Extra.Example.OK = 0
+	v.Extra.Example.Message = "Something went wrong"
+	return v
+}
+
+func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, mode Mode) *VerifyStatus {
 	//return laterReply()
-	var cerr error
 	resp := &VerifyStatus{
 		Result: "OK",
 		Extra: MainStatus{
-			Compile: Status{1, "The solution compiled flawlessly."},
-			Example: Status{1, "OK"},
+			Compile:   Status{1, "The solution compiled flawlessly."},
+			Example:   Status{1, "OK"},
+			TestData0: Status{1, "OK"},
+			TestData1: Status{1, "OK"},
+			TestData2: Status{1, "OK"},
+			TestData3: Status{1, "OK"},
+			TestData4: Status{1, "OK"},
 		},
 	}
 	if task == nil {
@@ -196,26 +241,23 @@ func GetVerifyStatus(runner *code.Runner, task *Task, mode Mode) *VerifyStatus {
 	}
 	content, err := ioutil.ReadFile(task.Src)
 	if err != nil {
-		cerr = errors.New("Internal Server Error")
-	} else {
-		ext := map[string]string{"cpp": "cpp", "c": "cpp", "py2": "py", "py3": "py", "go": "go"}[task.ProgLang]
-		language := map[string]string{"cpp": "cpp", "c": "cpp"}[task.ProgLang]
-		name := fmt.Sprintf("main.%s", ext)
-		input := code.MakeInput(language, name, string(content), code.StdinFile(""))
-		log.Info("In verify status, input: %s", input)
-		out, err := runner.Run(input)
-		if err != nil {
-			cerr = err
-		}
-		log.Info("In VerifyStatus, mode=%v, got stdout=%q, stderr=%q, err=%v", mode, out.Stdout, out.Stderr, err)
-		resp.Extra.Example.Message = "stdout:" + out.Stdout + " stderr: " + out.Stderr
+		return errorResponse(err, resp)
 	}
-	if cerr != nil {
-		resp.Extra.Example.Message = resp.Extra.Example.Message + "\n" + fmt.Sprintf("%v", cerr)
-		resp.Extra.Example.OK = 0
-	} else {
-		resp.Extra.Example.OK = 1
+	filename := filepath.Base(task.Src)
+	language := LanguageForRunner(task.ProgLang)
+	input := code.MakeInput(language, filename, string(content), code.StdinFile(solnReq.TestData0))
+	log.Info("In VerifyStatus, input: %s", input)
+	out, err := runner.Run(input)
+	if err != nil {
+		return errorResponse(err, resp)
 	}
+	log.Info("In VerifyStatus, mode=%v, got stdout=%q, stderr=%q, err=%v", mode, out.Stdout, out.Stderr, err)
+
+	if out.Stderr != "" || err != nil {
+		err := errors.New(fmt.Sprintf("stderr: %s, err: %v", out.Stderr, err))
+		return errorResponse(err, resp)
+	}
+	resp.Extra.Example.Message = out.Stdout
 	return resp
 }
 
