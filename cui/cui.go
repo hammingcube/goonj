@@ -80,6 +80,7 @@ func DefaultOptions() *Options {
 			"py2": ProgLang{Version: "py2", Name: "Python 2"},
 			"py3": ProgLang{Version: "py3", Name: "Python 3"},
 			"go":  ProgLang{Version: "go", Name: "Go"},
+			"js":  ProgLang{Version: "js", Name: "Javascript"},
 		},
 		ShowSurvey:  false,
 		ShowWelcome: false,
@@ -199,6 +200,7 @@ func FileNameForCode(progLang string) string {
 		"py2": "py",
 		"py3": "py",
 		"go":  "go",
+		"js":  "js",
 	}[progLang]
 	return fmt.Sprintf("main.%s", ext)
 }
@@ -209,6 +211,7 @@ func LanguageForRunner(progLang string) string {
 		"cpp":        "cpp",
 		"go":         "go",
 		"javascript": "javascript",
+		"js":         "javascript",
 		"py2":        "python",
 		"py3":        "python",
 	}[progLang]
@@ -278,7 +281,7 @@ func GetClock(sessions map[string]*Session, clkReq *ClockRequest) *ClockResponse
 
 func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 	key := TaskKey{val.Ticket, val.Task}
-	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go"})
+	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go", "js"})
 	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
 	task := tasks[key]
 	if task == nil {
