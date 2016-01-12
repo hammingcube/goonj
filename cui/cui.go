@@ -301,9 +301,12 @@ func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 		}
 		tasks[key] = task
 	}
-	log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.ProgLang, val.ProgLang)
+	log.Info("PREFER-SERVER-LANG: %v", val.PreferServerProgLang)
+	if val.PreferServerProgLang {
+		log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.ProgLang, val.ProgLang)
+		task.ProgLang = val.ProgLang
+	}
 	log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.HumanLang, val.HumanLang)
-	task.ProgLang = val.ProgLang
 	task.HumanLang = val.HumanLang
 	return task
 }
