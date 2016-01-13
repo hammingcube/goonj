@@ -23,7 +23,7 @@
 /* global Log */
 /* global ui */
 var TestCases = {
-    limit : 5,
+    limit : 1,
 
     init : function() {
         this.nextID = 0;
@@ -39,7 +39,7 @@ var TestCases = {
         Log.info("candidate add test case");
         value = value || $('input[name=test_case_example]').val();
         var num = this.nextID;
-        this.nextID++;
+        //this.nextID++;
         this.count++;
 
         if (this.limitReached())
@@ -55,7 +55,7 @@ var TestCases = {
             '<div id="test_data'+num+'" class="testCase">' +
             '<a style="float:right" href="#">remove</a>' +
             '<div class="clr"></div>' +
-            '<textarea name="test_data[]" rows=2 cols=50></textarea>'+
+            '<textarea name="test_data[]" rows=8 cols=65></textarea>'+
             '</div>');
         var $textarea = $test_case.find('textarea');
         $textarea.val(value);
