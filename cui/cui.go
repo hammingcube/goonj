@@ -54,13 +54,37 @@ type Session struct {
 	TimeLimit int
 }
 
-func NewTicket(opts *Options) *Ticket {
-	id := utils.RandId()
+func addToTask(tasks map[TaskKey]*Task, ticketId string, input *code.Input, prefix string) {
+	for i, file := range input.Files {
+		taskId := fmt.Sprintf("%s-%d-%s", prefix, i, file.Name)
+		task := NewTask()
+		task.Id = taskId
+		task.CurrentSolution = file.Content
+		task.ProgLang = LanguageFromRunner(input.Language)
+		tasks[TaskKey{ticketId, taskId}] = task
+	}
+
+}
+
+func NewTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
+	ticketId := utils.RandId()
+	gistId := "4f1bae999b5fbea43624"
+	evalContext := code.GistFetch(gistId)
+	addToTask(tasks, ticketId, evalContext.Generator, "generator")
+	addToTask(tasks, ticketId, evalContext.Solution, "solution")
+	addToTask(tasks, ticketId, evalContext.Test, "test")
+
+	taskIds := []string{}
+	for key := range tasks {
+		taskIds = append(taskIds, key.TaskId)
+	}
+
 	if opts == nil {
 		opts = DefaultOptions()
 	}
-	opts.TicketId = id
-	return &Ticket{Id: id, Options: opts}
+	opts.TicketId = ticketId
+	opts.TaskNames = taskIds
+	return &Ticket{Id: ticketId, Options: opts}
 }
 
 func DefaultOptions() *Options {
@@ -219,6 +243,16 @@ func LanguageForRunner(progLang string) string {
 	}[progLang]
 }
 
+func LanguageFromRunner(progLang string) string {
+	return map[string]string{
+		"c":          "cpp",
+		"cpp":        "cpp",
+		"go":         "go",
+		"javascript": "javascript",
+		"py3":        "python",
+	}[progLang]
+}
+
 func errorResponse(err error, v *VerifyStatus) *VerifyStatus {
 	v.Extra.Compile.OK = 0
 	v.Extra.Compile.Message = fmt.Sprintf("Something went wrong: %v", err)
@@ -322,6 +356,25 @@ func getDescFromMarkdown(input []byte) []byte {
 	unsafe := blackfriday.MarkdownCommon(input)
 	html := bluemonday.UGCPolicy().SanitizeBytes(unsafe)
 	return html
+}
+
+func NewTask() *Task {
+	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go", "js"})
+	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
+	task := &Task{
+		Id:               "",
+		Status:           "open",
+		Description:      "Placeholder",
+		Type:             "algo",
+		SolutionTemplate: "This is just a template",
+		CurrentSolution:  "",
+		ExampleInput:     "",
+		ProgLangList:     string(prg_lang_list),
+		HumanLangList:    string(human_lang_list),
+		ProgLang:         "cpp",
+		HumanLang:        "en",
+	}
+	return task
 }
 
 func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {

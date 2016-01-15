@@ -384,7 +384,7 @@ func main() {
 		log.Info("Got: access token: %s", *expected.Data.Identities[0].AccessToken)
 		USER_GH_TOKEN := *expected.Data.Identities[0].AccessToken
 		user := &UserContext{githubClient: NewGitHubClient(USER_GH_TOKEN)}
-		ticket := cui.NewTicket(nil)
+		ticket := cui.NewTicket(tasks, nil)
 		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now(), Ticket: ticket}
 		userContexts[ticket.Id] = user
 		expected.Ticket = ticket.Id
@@ -412,7 +412,7 @@ func main() {
 	})
 	e.Get("/cui/new", func(c *echo.Context) error {
 		user := &UserContext{githubClient: NewGitHubClient(THINK_GISTS_KEY)}
-		ticket := cui.NewTicket(nil)
+		ticket := cui.NewTicket(tasks, nil)
 		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now(), Ticket: ticket}
 		userContexts[ticket.Id] = user
 		return c.JSON(http.StatusOK, map[string]string{"ticket_id": ticket.Id})
