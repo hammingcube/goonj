@@ -872,6 +872,7 @@ function CandidateUi(options)
     };
 
     self.simpleCopyProtection = function() {
+        return;
         Log.debug("protecting task description");
         $('#brinza-task-description').addClass("protected");
 

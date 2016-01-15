@@ -8,6 +8,8 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/maddyonline/code"
 	"github.com/maddyonline/goonj/utils"
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"path/filepath"
 	"time"
@@ -279,6 +281,49 @@ func GetClock(sessions map[string]*Session, clkReq *ClockRequest) *ClockResponse
 	return &ClockResponse{Result: "OK", NewTimeLimit: remaining}
 }
 
+const SOLN_TEMPL_CPP = `# include <iostream>
+using namespace std;
+int main() {
+  string s;
+  while(cin >> s) {
+    cout << s.size() << endl;
+  }
+}
+`
+
+const DESC_TEMPL = `### Can a string be a palindrome?
+
+Given a string (say appease) be converted into a palindrome by permuting it?
+In this case, we see appease --> apesepa is possible.
+
+What is a good algorithm for this?
+
+#### Test Cases
+
+#### Input
+
+	appease
+	appeal
+
+#### Output
+
+	1
+	0
+
+
+### Code Example
+
+	func getTrue() bool {
+	    return true
+	}
+`
+
+func getDescFromMarkdown(input []byte) []byte {
+	unsafe := blackfriday.MarkdownCommon(input)
+	html := bluemonday.UGCPolicy().SanitizeBytes(unsafe)
+	return html
+}
+
 func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 	key := TaskKey{val.Ticket, val.Task}
 	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go", "js"})
@@ -289,10 +334,10 @@ func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 		task = &Task{
 			Id:               val.Task,
 			Status:           "open",
-			Description:      "Description: task1,en,c",
+			Description:      string(getDescFromMarkdown([]byte(DESC_TEMPL))),
 			Type:             "algo",
-			SolutionTemplate: "",
-			CurrentSolution:  "",
+			SolutionTemplate: "This is just a template",
+			CurrentSolution:  SOLN_TEMPL_CPP,
 			ExampleInput:     "",
 			ProgLangList:     string(prg_lang_list),
 			HumanLangList:    string(human_lang_list),
