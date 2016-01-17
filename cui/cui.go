@@ -12,6 +12,7 @@ import (
 	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -54,16 +55,43 @@ type Session struct {
 	TimeLimit int
 }
 
-func addToTask(tasks map[TaskKey]*Task, ticketId string, input *code.Input, prefix string) {
-	for i, file := range input.Files {
-		taskId := fmt.Sprintf("%s-%d-%s", prefix, i, file.Name)
-		task := NewTask()
-		task.Id = taskId
-		task.CurrentSolution = file.Content
-		task.ProgLang = LanguageFromRunner(input.Language)
-		tasks[TaskKey{ticketId, taskId}] = task
+func addToTask(tasks map[TaskKey]*Task, ticketId string, input *code.Input, prefix string) *Task {
+	if len(input.Files) < 1 {
+		return nil
+	}
+	task := NewTask()
+	file := input.Files[0]
+	taskName := strings.Join([]string{"task", prefix, "main"}, "-")
+	task.Id = taskName
+	task.CurrentSolution = file.Content
+	task.ProgLang = LanguageFromRunner(input.Language)
+	tasks[TaskKey{ticketId, taskName}] = task
+	return task
+}
+
+func LoadTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
+	ticketId := utils.RandId()
+	gistId := "4f1bae999b5fbea43624"
+	evalContext := code.GistFetch(gistId)
+	//addToTask(tasks, ticketId, evalContext.Generator, "generator")
+	//addToTask(tasks, ticketId, evalContext.Solution, "solution")
+	task := addToTask(tasks, ticketId, evalContext.Test, "test")
+	task.JudgeSolution = evalContext.Solution
+	task.Generator = evalContext.Generator
+
+	taskIds := []string{}
+	for key := range tasks {
+		taskIds = append(taskIds, key.TaskId)
 	}
 
+	if opts == nil {
+		opts = DefaultOptions()
+	}
+	opts.TicketId = ticketId
+	opts.TaskNames = taskIds
+	opts.CurrentTaskName = task.Id
+	opts.CurrentProgLang = task.ProgLang
+	return &Ticket{Id: ticketId, Options: opts}
 }
 
 func NewTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
@@ -142,19 +170,21 @@ type ClientGetTaskMsg struct {
 }
 
 type Task struct {
-	XMLName          xml.Name `xml:"response"`
-	Id               string   `xml:"id" json:"id"`
-	Status           string   `xml:"task_status" json: "task_status"`
-	Description      string   `xml:"task_description"`
-	Type             string   `xml:"task_type"`
-	SolutionTemplate string   `xml:"solution_template"`
-	CurrentSolution  string   `xml:"current_solution"`
-	ExampleInput     string   `xml:"example_input"`
-	ProgLangList     string   `xml:"prg_lang_list"`
-	HumanLangList    string   `xml:"human_lang_list"`
-	ProgLang         string   `xml:"prg_lang"`
-	HumanLang        string   `xml:"human_lang"`
-	Src              string   `xml:"-"`
+	XMLName          xml.Name    `xml:"response"`
+	Id               string      `xml:"id" json:"id"`
+	Status           string      `xml:"task_status" json: "task_status"`
+	Description      string      `xml:"task_description"`
+	Type             string      `xml:"task_type"`
+	SolutionTemplate string      `xml:"solution_template"`
+	CurrentSolution  string      `xml:"current_solution"`
+	ExampleInput     string      `xml:"example_input"`
+	ProgLangList     string      `xml:"prg_lang_list"`
+	HumanLangList    string      `xml:"human_lang_list"`
+	ProgLang         string      `xml:"prg_lang"`
+	HumanLang        string      `xml:"human_lang"`
+	Src              string      `xml:"-"`
+	Generator        *code.Input `xml:"-"`
+	JudgeSolution    *code.Input `xml:"-"`
 }
 
 type ClockRequest struct {
@@ -218,6 +248,17 @@ const (
 	VERIFY Mode = iota
 	JUDGE
 )
+
+func (t Mode) String() string {
+	var val string
+	switch t {
+	case VERIFY:
+		val = "VERIFY"
+	case JUDGE:
+		val = "JUDGE"
+	}
+	return val
+}
 
 func FileNameForCode(progLang string) string {
 	ext := map[string]string{
@@ -284,19 +325,29 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 	}
 	filename := filepath.Base(task.Src)
 	language := LanguageForRunner(task.ProgLang)
+	log.Info("Got testData:=>%s<=", solnReq.TestData0)
 	input := code.MakeInput(language, filename, string(content), code.StdinFile(solnReq.TestData0))
 	log.Info("In VerifyStatus, input: %s", input)
-	out, err := runner.Run(input)
-	if err != nil {
-		return errorResponse(err, resp)
+	log.Info("In mode %s", mode)
+	switch mode {
+	case VERIFY:
+		out, err := runner.Run(input)
+		if err != nil {
+			return errorResponse(err, resp)
+		}
+		log.Info("In VerifyStatus, mode=%v, got stdout=%q, stderr=%q, err=%v", mode, out.Stdout, out.Stderr, err)
+		if out.Stderr != "" || err != nil {
+			err := errors.New(fmt.Sprintf("stderr: %s, err: %v", out.Stderr, err))
+			return errorResponse(err, resp)
+		}
+		resp.Extra.Example.Message = out.Stdout
+	case JUDGE:
+		log.Info("Judge called")
+		log.Info("In VerifyStatus, mode=%s", mode)
+		result := code.Evaluate(task.Generator, input, task.JudgeSolution, runner)
+		log.Info("Got result of evaluation: %#v", result)
+		resp.Extra.Example.Message = fmt.Sprintf("%#v", result)
 	}
-	log.Info("In VerifyStatus, mode=%v, got stdout=%q, stderr=%q, err=%v", mode, out.Stdout, out.Stderr, err)
-
-	if out.Stderr != "" || err != nil {
-		err := errors.New(fmt.Sprintf("stderr: %s, err: %v", out.Stderr, err))
-		return errorResponse(err, resp)
-	}
-	resp.Extra.Example.Message = out.Stdout
 	return resp
 }
 
@@ -381,7 +432,13 @@ func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
 	key := TaskKey{val.Ticket, val.Task}
 	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go", "js"})
 	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
-	task := tasks[key]
+	task, ok := tasks[key]
+	log.Info("Looking for %s in tasks: %v", key, ok)
+	keys := []TaskKey{}
+	for key := range tasks {
+		keys = append(keys, key)
+	}
+	log.Info("len(tasks): %d, keys: %v", len(tasks), keys)
 	if task == nil {
 		log.Info("Serving task based on nil request")
 		task = &Task{

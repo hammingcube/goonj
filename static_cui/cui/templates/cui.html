@@ -218,6 +218,8 @@
     var ui_options = {{.Ticket.Options}} || local_ui_options;
             //window.server = LocalServer();
             //server.init();
+            console.log("Ui Options: ");
+            console.log(ui_options);
             window.ui = CandidateUi(ui_options);
             ui.init();
             ui.exit = function(url) {

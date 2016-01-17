@@ -418,6 +418,14 @@ func main() {
 		return c.JSON(http.StatusOK, map[string]string{"ticket_id": ticket.Id})
 	})
 
+	e.Get("/cui/load", func(c *echo.Context) error {
+		user := &UserContext{githubClient: NewGitHubClient(THINK_GISTS_KEY)}
+		ticket := cui.LoadTicket(tasks, nil)
+		cuiSessions[ticket.Id] = &cui.Session{TimeLimit: 3600, Created: time.Now(), Ticket: ticket}
+		userContexts[ticket.Id] = user
+		return c.JSON(http.StatusOK, map[string]string{"ticket_id": ticket.Id})
+	})
+
 	addCuiHandlers(e)
 
 	// Start server
