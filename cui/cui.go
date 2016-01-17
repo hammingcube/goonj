@@ -348,7 +348,9 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 	case JUDGE:
 		log.Info("Judge called")
 		log.Info("In VerifyStatus, mode=%s", mode)
-		result := code.Evaluate(task.Generator, input, task.JudgeSolution, runner)
+		mysoln := code.MakeInput(language, filename, string(content), code.StdinFile(""))
+		log.Info("My soln: %#v", mysoln)
+		result := code.Evaluate(task.Generator, mysoln, task.JudgeSolution, runner)
 		log.Info("Got result of evaluation: %#v", result)
 		resp.Extra.Example.Message = fmt.Sprintf("%#v", result)
 	}
