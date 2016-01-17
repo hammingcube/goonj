@@ -130,6 +130,10 @@ var Help = function(isInitial, taskCount, prgLangName, prgLangCount, support_ema
               intro:self.stepsTexts.runButton,
               position: "top"
             },
+            { element: "#judge_button",
+              intro:self.stepsTexts.runButton,
+              position: "top"
+            },
             { element: "#console",
               intro:self.stepsTexts.outputWindow,
               position: "top"

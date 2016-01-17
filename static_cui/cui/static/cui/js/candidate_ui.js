@@ -318,6 +318,7 @@ function CandidateUi(options)
         var may_switch = (self.task.loaded && !self.isCalling());
         var submit_or_reload_controls = [
             '#verify_button',
+            '#judge_button',
             '#final_button',
             '#save_btn',
             '#current_human_lang',
@@ -426,6 +427,19 @@ function CandidateUi(options)
     ///////////////////////// VERIFY ACTION ///////////////////
 
     self.verifyAction = function() {
+        Console.clear();
+        Console.msg("Running solution...");
+        Log.info("candidate verify action");
+
+        self.submitSolution(
+                'verify',
+                true,
+                self.verifyActionSuccess,
+                self.verifyActionError
+        );
+    };
+
+    self.judgeAction = function() {
         Console.clear();
         Console.msg("Running solution...");
         Log.info("candidate verify action");
@@ -1146,6 +1160,7 @@ function CandidateUi(options)
 
         $('#resize_console_button').click(self.resizeConsoleAction);
         $('#verify_button').click(self.verifyAction);
+        $('#judge_button').click(self.judgeAction);
         $('#reset_btn').click(self.resetAction);
         $('#help_btn').click(function() { self.showHelp(false, null); });
         $('#survey_skip_button').click(function() {
