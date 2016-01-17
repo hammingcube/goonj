@@ -202,12 +202,19 @@ func addCuiHandlers(e *echo.Echo) {
 		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, solnReq, cui.VERIFY))
 	})
 
+	chk.Post("/judge", func(c *echo.Context) error {
+		c.Form("task")
+		log.Info("/judge: %#v", c.Request().Form)
+		task, solnReq := saveSolution(c)
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, solnReq, cui.JUDGE))
+	})
+
 	chk.Post("/final", func(c *echo.Context) error {
 		log.Info("In /final")
 		c.Form("task")
 		log.Info("/final: %#v", c.Request().Form)
 		task, solnReq := saveSolution(c)
-		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, solnReq, cui.JUDGE))
+		return c.XML(http.StatusOK, cui.GetVerifyStatus(runner, task, solnReq, cui.FINAL))
 	})
 
 	chk.Post("/status", func(c *echo.Context) error {

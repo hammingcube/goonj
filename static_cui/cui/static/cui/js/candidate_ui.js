@@ -225,7 +225,7 @@ function CandidateUi(options)
         }
 
         var url;
-        if (mode == "verify" || mode == "final" || mode == "save") {
+        if (mode == "verify" || mode == "final" || mode == "save" || mode == "judge") {
             url = self.options.urls[mode];
         }
         else {
@@ -445,7 +445,7 @@ function CandidateUi(options)
         Log.info("candidate verify action");
 
         self.submitSolution(
-                'verify',
+                'judge',
                 true,
                 self.verifyActionSuccess,
                 self.verifyActionError

@@ -147,6 +147,7 @@ func DefaultOptions() *Options {
 			"clock":          "/chk/clock/",
 			"close":          "/c/close/TICKET_ID",
 			"verify":         "/chk/verify/",
+			"judge":          "/chk/judge/",
 			"save":           "/chk/save/",
 			"timeout_action": "/chk/timeout_action/",
 			"final":          "/chk/final/",
@@ -247,6 +248,7 @@ type Mode int
 const (
 	VERIFY Mode = iota
 	JUDGE
+	FINAL
 )
 
 func (t Mode) String() string {
@@ -256,6 +258,8 @@ func (t Mode) String() string {
 		val = "VERIFY"
 	case JUDGE:
 		val = "JUDGE"
+	case FINAL:
+		val = "FINAL"
 	}
 	return val
 }
@@ -330,7 +334,7 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 	log.Info("In VerifyStatus, input: %s", input)
 	log.Info("In mode %s", mode)
 	switch mode {
-	case VERIFY:
+	case VERIFY, FINAL:
 		out, err := runner.Run(input)
 		if err != nil {
 			return errorResponse(err, resp)
