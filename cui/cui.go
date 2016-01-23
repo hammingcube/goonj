@@ -179,6 +179,7 @@ type Task struct {
 	ProgLang         string      `xml:"prg_lang"`
 	HumanLang        string      `xml:"human_lang"`
 	Src              string      `xml:"-"`
+	Filename         string      `xml:"-"`
 	Generator        *code.Input `xml:"-"`
 	JudgeSolution    *code.Input `xml:"-"`
 }

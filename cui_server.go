@@ -20,7 +20,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -133,8 +132,11 @@ func saveSolution(c *echo.Context) (*cui.Task, *cui.SolutionRequest) {
 
 	task.ProgLang = solnReq.ProgLang
 	task.CurrentSolution = solnReq.Solution
+	fname := fmt.Sprintf("%s-%s", solnReq.Task, cui.FileNameForCode(solnReq.ProgLang))
+	filename := fmt.Sprintf("%s/%s/%s/%s", TMP_DIR, solnReq.Ticket, solnReq.Task, fname)
 
-	filename := fmt.Sprintf("%s/%s/%s/%s", TMP_DIR, solnReq.Ticket, solnReq.Task, cui.FileNameForCode(solnReq.ProgLang))
+	oldFilename := task.Filename
+
 	func() {
 		// Maybe make it a go-routine?
 		log.Info("%s %s: Writing soln locally to %s", c.Request().Method, c.Request().URL, filename)
@@ -144,13 +146,13 @@ func saveSolution(c *echo.Context) (*cui.Task, *cui.SolutionRequest) {
 		}
 		log.Info("%s %s: Updating Task.Src to %s", c.Request().Method, c.Request().URL, filename)
 		task.Src = filename
+		task.Filename = fname
 	}()
 	func() {
 		log.Info("%s %s: Storing the following solution as gist: %q", c.Request().Method, c.Request().URL, solnReq.Solution)
-		storeKey, filename, filecontent := solnReq.Ticket, strings.Join([]string{solnReq.Task, filepath.Base(filename)}, "-"), string(solnReq.Solution)
 		user, ok := userContexts[solnReq.Ticket]
 		log.Info("ticket, user, ok: %s, %v, %v", solnReq.Ticket, user, ok)
-		saveAsGist(user.githubClient, storeKey, filename, filecontent)
+		saveAsGist(user.githubClient, solnReq.Ticket, oldFilename, fname, string(solnReq.Solution))
 	}()
 	return task, solnReq
 }
@@ -241,7 +243,8 @@ func NewGitHubClient(secret string) *github.Client {
 	return github.NewClient(tc)
 }
 
-func saveAsGist(client *github.Client, key, filename, filecontent string) {
+func saveAsGist(client *github.Client, key, oldFilename, filename, filecontent string) {
+	log.Info("KEY OLD NEW: %s %s %s", key, oldFilename, filename)
 	savedGist, ok := gistStore[key]
 	if !ok {
 		description := "Think Hike App"
@@ -263,7 +266,13 @@ func saveAsGist(client *github.Client, key, filename, filecontent string) {
 			gistStore[key] = g
 		}
 	} else {
-		savedGist.Files[github.GistFilename(filename)] = github.GistFile{Filename: &filename, Content: &filecontent}
+		var filekey github.GistFilename
+		if oldFilename != "" {
+			filekey = github.GistFilename(oldFilename)
+		} else {
+			filekey = github.GistFilename(filename)
+		}
+		savedGist.Files[filekey] = github.GistFile{Filename: &filename, Content: &filecontent}
 		g, _, err := client.Gists.Edit(*savedGist.ID, savedGist)
 		if err != nil {
 			log.Info("Got error while saving gist: %s", err)
