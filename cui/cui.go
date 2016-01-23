@@ -73,17 +73,10 @@ func LoadTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
 	ticketId := utils.RandId()
 	gistId := "4f1bae999b5fbea43624"
 	evalContext := code.GistFetch(gistId)
-	//addToTask(tasks, ticketId, evalContext.Generator, "generator")
-	//addToTask(tasks, ticketId, evalContext.Solution, "solution")
 	task := addToTask(tasks, ticketId, evalContext.Test, "test")
 	task.JudgeSolution = evalContext.Solution
 	task.Generator = evalContext.Generator
-
-	taskIds := []string{}
-	for key := range tasks {
-		taskIds = append(taskIds, key.TaskId)
-	}
-
+	taskIds := []string{task.Id}
 	if opts == nil {
 		opts = DefaultOptions()
 	}

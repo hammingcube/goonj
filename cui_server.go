@@ -414,6 +414,7 @@ func main() {
 		if !session.Started {
 			session.Started = true
 		}
+		return c.JSON(http.StatusOK, session.Ticket)
 		log.Info("Session Started? %v", session.Started)
 		return c.Render(http.StatusOK, "cui.html", map[string]interface{}{"Title": "Goonj", "Ticket": session.Ticket})
 	})
