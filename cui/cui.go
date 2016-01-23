@@ -327,7 +327,7 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 	log.Info("In VerifyStatus, input: %s", input)
 	log.Info("In mode %s", mode)
 	switch mode {
-	case VERIFY, FINAL:
+	case VERIFY:
 		out, err := runner.Run(input)
 		if err != nil {
 			return errorResponse(err, resp)
@@ -337,8 +337,9 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 			err := errors.New(fmt.Sprintf("stderr: %s, err: %v", out.Stderr, err))
 			return errorResponse(err, resp)
 		}
+		resp.Extra.Example.OK = 0
 		resp.Extra.Example.Message = out.Stdout
-	case JUDGE:
+	case JUDGE, FINAL:
 		log.Info("Judge called")
 		log.Info("In VerifyStatus, mode=%s", mode)
 		mysoln := code.MakeInput(language, filename, string(content), code.StdinFile(""))
