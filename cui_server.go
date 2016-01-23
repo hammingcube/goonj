@@ -175,6 +175,10 @@ func addCuiHandlers(e *echo.Echo) {
 		}
 		return c.XML(http.StatusOK, cui.GetTask(tasks, val))
 	})
+	c.Get("/close/:ticket_id", func(c *echo.Context) error {
+		log.Info("Params: ->%s<-, ->%s<-", c.P(0), c.P(1))
+		return c.Redirect(http.StatusTemporaryRedirect, "/")
+	})
 
 	chk := e.Group("/chk")
 	chk.Post("/clock", func(c *echo.Context) error {

@@ -206,9 +206,9 @@
         urls: {
             "status": "/chk/status/",
             "get_task": "/c/_get_task/",
-            "submit_survey": "/surveys/_ajax_submit_candidate_survey/TICKET_ID/",
+            "submit_survey": "/surveys/_ajax_submit_candidate_survey/{{ .Ticket.Id }}/",
             "clock": "/chk/clock/",
-            "close": "/c/close/TICKET_ID",
+            "close": "/c/close/{{ .Ticket.Id }}",
             "verify": "/chk/verify/",
             "judge": "/chk/judge/",
             "save": "/chk/save/",
@@ -226,8 +226,8 @@
             ui.init();
             ui.exit = function(url) {
               window.alert("CUI exiting; next page would be '"+ url +"'. \n\n" +
-                           "Press OK to refresh.");
-              window.location = ".";
+                           "Press OK to refresh the page.");
+              window.location = url;
             };
           });   
 

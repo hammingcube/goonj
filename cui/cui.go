@@ -84,6 +84,8 @@ func LoadTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
 	opts.TaskNames = taskIds
 	opts.CurrentTaskName = task.Id
 	opts.CurrentProgLang = task.ProgLang
+	opts.Urls["close"] = strings.Replace(opts.Urls["close"], "TICKET_ID", opts.TicketId, -1)
+	opts.Urls["submit_survey"] = strings.Replace(opts.Urls["submit_survey"], "TICKET_ID", opts.TicketId, -1)
 	return &Ticket{Id: ticketId, Options: opts}
 }
 
