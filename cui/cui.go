@@ -93,20 +93,29 @@ func NewTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
 	ticketId := utils.RandId()
 	gistId := "4f1bae999b5fbea43624"
 	evalContext := code.GistFetch(gistId)
-	addToTask(tasks, ticketId, evalContext.Generator, "generator")
-	addToTask(tasks, ticketId, evalContext.Solution, "solution")
-	addToTask(tasks, ticketId, evalContext.Test, "test")
+	t1 := addToTask(tasks, ticketId, evalContext.Generator, "generator")
+	t2 := addToTask(tasks, ticketId, evalContext.Solution, "solution")
+	t3 := addToTask(tasks, ticketId, evalContext.Test, "test")
 
-	taskIds := []string{}
-	for key := range tasks {
-		taskIds = append(taskIds, key.TaskId)
-	}
+	t1.SelfSolution = code.MakeInput(t1.ProgLang, t1.Filename, t1.CurrentSolution, code.StdinFile(""))
+	t2.SelfSolution = code.MakeInput(t2.ProgLang, t2.Filename, t2.CurrentSolution, code.StdinFile(""))
+	t3.SelfSolution = code.MakeInput(t3.ProgLang, t3.Filename, t3.CurrentSolution, code.StdinFile(""))
 
+	t2.JudgeSolution = t3.SelfSolution
+	t2.Generator = t1.SelfSolution
+	t3.JudgeSolution = t2.SelfSolution
+	t3.Generator = t1.SelfSolution
+
+	taskIds := []string{t1.Id, t2.Id, t3.Id}
 	if opts == nil {
 		opts = DefaultOptions()
 	}
 	opts.TicketId = ticketId
 	opts.TaskNames = taskIds
+	opts.CurrentTaskName = t1.Id
+	opts.CurrentProgLang = t1.ProgLang
+	opts.Urls["close"] = strings.Replace(opts.Urls["close"], "TICKET_ID", opts.TicketId, -1)
+	opts.Urls["submit_survey"] = strings.Replace(opts.Urls["submit_survey"], "TICKET_ID", opts.TicketId, -1)
 	return &Ticket{Id: ticketId, Options: opts}
 }
 
@@ -182,6 +191,7 @@ type Task struct {
 	Filename         string      `xml:"-"`
 	Generator        *code.Input `xml:"-"`
 	JudgeSolution    *code.Input `xml:"-"`
+	SelfSolution     *code.Input `xml:"-"`
 }
 
 type ClockRequest struct {
@@ -327,6 +337,11 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 	language := LanguageForRunner(task.ProgLang)
 	log.Info("Got testData:=>%s<=", solnReq.TestData0)
 	input := code.MakeInput(language, filename, string(content), code.StdinFile(solnReq.TestData0))
+	if task.SelfSolution == nil {
+		task.SelfSolution = input
+	} else {
+		*task.SelfSolution = *input
+	}
 	log.Info("In VerifyStatus, input: %s", input)
 	log.Info("In mode %s", mode)
 	switch mode {
@@ -346,10 +361,23 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 		log.Info("Judge called")
 		log.Info("In VerifyStatus, mode=%s", mode)
 		mysoln := code.MakeInput(language, filename, string(content), code.StdinFile(""))
+		if task.SelfSolution == nil {
+			task.SelfSolution = mysoln
+		} else {
+			*task.SelfSolution = *mysoln
+		}
 		log.Info("My soln: %#v", mysoln)
-		result := code.Evaluate(task.Generator, mysoln, task.JudgeSolution, runner)
-		log.Info("Got result of evaluation: %#v", result)
-		resp.Extra.Example.Message = fmt.Sprintf("%#v", result)
+		log.Info("Task generator: %#v", task.Generator)
+		log.Info("Task judge: %#v", task.JudgeSolution)
+		log.Info("Task self: %#v", task.SelfSolution)
+
+		if task.Generator != nil && task.JudgeSolution != nil {
+			result := code.Evaluate(task.Generator, mysoln, task.JudgeSolution, runner)
+			log.Info("Got result of evaluation: %#v", result)
+			resp.Extra.Example.Message = fmt.Sprintf("%#v", result)
+		} else {
+			log.Info("Skipping evaluation: Missing JudgeSoln and/or Generator")
+		}
 	}
 	return resp
 }
