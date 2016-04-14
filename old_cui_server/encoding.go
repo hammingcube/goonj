@@ -23,7 +23,7 @@ func getClock() []byte {
 	return xmlResp
 }
 
-func getTask(val *ClientGetTaskMsg) []byte {
+func getTask(val *MessageGetTask) []byte {
 	prg_lang_list, err := json.Marshal([]string{"c", "cpp"})
 	human_lang_list, err := json.Marshal([]string{"en", "cn"})
 	task := tasks[val.Task]

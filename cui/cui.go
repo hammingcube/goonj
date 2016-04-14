@@ -69,6 +69,27 @@ func addToTask(tasks map[TaskKey]*Task, ticketId string, input *code.Input, pref
 	return task
 }
 
+func ticketFromTasks(ticketId string, tasks []*Task, opts *Options) *Ticket {
+	if len(tasks) < 1 {
+		return nil
+	}
+	if opts == nil {
+		opts = DefaultOptions()
+	}
+	opts.TicketId = ticketId
+	taskIds := []string{}
+	for _, task := range tasks {
+		taskIds = append(taskIds, task.Id)
+	}
+	opts.TaskNames = taskIds
+	task1 := tasks[0]
+	opts.CurrentTaskName = task1.Id
+	opts.CurrentProgLang = task1.ProgLang
+	opts.Urls["close"] = strings.Replace(opts.Urls["close"], "TICKET_ID", opts.TicketId, -1)
+	opts.Urls["submit_survey"] = strings.Replace(opts.Urls["submit_survey"], "TICKET_ID", opts.TicketId, -1)
+	return &Ticket{Id: ticketId, Options: opts}
+}
+
 func LoadTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
 	ticketId := utils.RandId()
 	gistId := "4f1bae999b5fbea43624"
@@ -76,20 +97,25 @@ func LoadTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
 	task := addToTask(tasks, ticketId, evalContext.Test, "test")
 	task.JudgeSolution = evalContext.Solution
 	task.Generator = evalContext.Generator
-	taskIds := []string{task.Id}
-	if opts == nil {
-		opts = DefaultOptions()
-	}
-	opts.TicketId = ticketId
-	opts.TaskNames = taskIds
-	opts.CurrentTaskName = task.Id
-	opts.CurrentProgLang = task.ProgLang
-	opts.Urls["close"] = strings.Replace(opts.Urls["close"], "TICKET_ID", opts.TicketId, -1)
-	opts.Urls["submit_survey"] = strings.Replace(opts.Urls["submit_survey"], "TICKET_ID", opts.TicketId, -1)
-	return &Ticket{Id: ticketId, Options: opts}
+	return ticketFromTasks(ticketId, []*Task{task}, opts)
 }
 
 func NewTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
+	ticketId := utils.RandId()
+	input := &code.Input{
+		Language: "c",
+		Files: []code.File{
+			code.File{
+				Name:    FileNameForCode("c"),
+				Content: SOLN_TEMPL_CPP,
+			},
+		},
+	}
+	task := addToTask(tasks, ticketId, input, "solution")
+	return ticketFromTasks(ticketId, []*Task{task}, opts)
+}
+
+func NewDraftTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
 	ticketId := utils.RandId()
 	gistId := "4f1bae999b5fbea43624"
 	evalContext := code.GistFetch(gistId)
@@ -106,17 +132,8 @@ func NewTicket(tasks map[TaskKey]*Task, opts *Options) *Ticket {
 	t3.JudgeSolution = t2.SelfSolution
 	t3.Generator = t1.SelfSolution
 
-	taskIds := []string{t1.Id, t2.Id, t3.Id}
-	if opts == nil {
-		opts = DefaultOptions()
-	}
-	opts.TicketId = ticketId
-	opts.TaskNames = taskIds
-	opts.CurrentTaskName = t1.Id
-	opts.CurrentProgLang = t1.ProgLang
-	opts.Urls["close"] = strings.Replace(opts.Urls["close"], "TICKET_ID", opts.TicketId, -1)
-	opts.Urls["submit_survey"] = strings.Replace(opts.Urls["submit_survey"], "TICKET_ID", opts.TicketId, -1)
-	return &Ticket{Id: ticketId, Options: opts}
+	return ticketFromTasks(ticketId, []*Task{t1, t2, t3}, opts)
+
 }
 
 func DefaultOptions() *Options {
@@ -166,7 +183,7 @@ type TaskKey struct {
 	TaskId   string
 }
 
-type ClientGetTaskMsg struct {
+type MessageGetTask struct {
 	Task                 string
 	Ticket               string
 	ProgLang             string
@@ -441,8 +458,6 @@ func getDescFromMarkdown(input []byte) []byte {
 }
 
 func NewTask() *Task {
-	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go", "js"})
-	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
 	task := &Task{
 		Id:               "",
 		Status:           "open",
@@ -451,48 +466,52 @@ func NewTask() *Task {
 		SolutionTemplate: "This is just a template",
 		CurrentSolution:  "",
 		ExampleInput:     "",
-		ProgLangList:     string(prg_lang_list),
-		HumanLangList:    string(human_lang_list),
+		ProgLangList:     ProgrammingLanguageList(),
+		HumanLangList:    HumanLanguageList(),
 		ProgLang:         "cpp",
 		HumanLang:        "en",
 	}
 	return task
 }
 
-func GetTask(tasks map[TaskKey]*Task, val *ClientGetTaskMsg) *Task {
-	key := TaskKey{val.Ticket, val.Task}
+func ProgrammingLanguageList() string {
 	prg_lang_list, _ := json.Marshal([]string{"c", "cpp", "py2", "py3", "go", "js"})
+	return string(prg_lang_list)
+}
+
+func HumanLanguageList() string {
 	human_lang_list, _ := json.Marshal([]string{"en", "cn"})
+	return string(human_lang_list)
+}
+
+func GetTask(tasks map[TaskKey]*Task, msg *MessageGetTask) *Task {
+	key := TaskKey{msg.Ticket, msg.Task}
 	task, ok := tasks[key]
 	log.Info("Looking for %s in tasks: %v", key, ok)
-	keys := []TaskKey{}
-	for key := range tasks {
-		keys = append(keys, key)
-	}
-	log.Info("len(tasks): %d, keys: %v", len(tasks), keys)
-	if task == nil {
+
+	if !ok || task == nil {
 		log.Info("Serving task based on nil request")
 		task = &Task{
-			Id:               val.Task,
+			Id:               msg.Task,
 			Status:           "open",
 			Description:      string(getDescFromMarkdown([]byte(DESC_TEMPL))),
 			Type:             "algo",
 			SolutionTemplate: "This is just a template",
 			CurrentSolution:  SOLN_TEMPL_CPP,
 			ExampleInput:     "",
-			ProgLangList:     string(prg_lang_list),
-			HumanLangList:    string(human_lang_list),
-			ProgLang:         val.ProgLang,
-			HumanLang:        val.HumanLang,
+			ProgLangList:     ProgrammingLanguageList(),
+			HumanLangList:    HumanLanguageList(),
+			ProgLang:         msg.ProgLang,
+			HumanLang:        msg.HumanLang,
 		}
 		tasks[key] = task
 	}
-	log.Info("PREFER-SERVER-LANG: %v", val.PreferServerProgLang)
-	if val.PreferServerProgLang {
-		log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.ProgLang, val.ProgLang)
-		task.ProgLang = val.ProgLang
+	log.Info("PREFER-SERVER-LANG: %v", msg.PreferServerProgLang)
+	if msg.PreferServerProgLang {
+		log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.ProgLang, msg.ProgLang)
+		task.ProgLang = msg.ProgLang
 	}
-	log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.HumanLang, val.HumanLang)
-	task.HumanLang = val.HumanLang
+	log.Info("Updating task %s prog-lang form %s to %s", task.Id, task.HumanLang, msg.HumanLang)
+	task.HumanLang = msg.HumanLang
 	return task
 }

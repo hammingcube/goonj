@@ -168,14 +168,14 @@ func addCuiHandlers(e *echo.Echo) {
 		return c.String(http.StatusOK, "Started")
 	})
 	c.Post("/_get_task", func(c *echo.Context) error {
-		val := &cui.ClientGetTaskMsg{
+		msg := &cui.MessageGetTask{
 			Task:                 c.Form("task"),
 			Ticket:               c.Form("ticket"),
 			ProgLang:             c.Form("prg_lang"),
 			HumanLang:            c.Form("human_lang"),
 			PreferServerProgLang: c.Form("prefer_server_prg_lang") == "false",
 		}
-		return c.XML(http.StatusOK, cui.GetTask(tasks, val))
+		return c.XML(http.StatusOK, cui.GetTask(tasks, msg))
 	})
 	c.Get("/close/:ticket_id", func(c *echo.Context) error {
 		log.Info("Params: ->%s<-, ->%s<-", c.P(0), c.P(1))

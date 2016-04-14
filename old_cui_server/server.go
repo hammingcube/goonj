@@ -16,7 +16,7 @@ const MAIN_HTML = "../static_cui/cui/templates/cui.html"
 var cui_html []byte
 var tasks map[string]*Task
 
-type ClientGetTaskMsg struct {
+type MessageGetTask struct {
 	Task                 string
 	Ticket               string
 	ProgLang             string
@@ -50,7 +50,7 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 		w.Write(getClock())
 	case "/c/_get_task/":
 		//map[prefer_server_prg_lang:[false] ticket:[TICKET_ID] task:[task1] human_lang:[en] prg_lang:[c]]
-		val := &ClientGetTaskMsg{
+		val := &MessageGetTask{
 			Task:                 r.FormValue("task"),
 			Ticket:               r.FormValue("ticket"),
 			ProgLang:             r.FormValue("prg_lang"),
