@@ -372,7 +372,7 @@ func GetVerifyStatus(runner *code.Runner, task *Task, solnReq *SolutionRequest, 
 			err := errors.New(fmt.Sprintf("stderr: %s, err: %v", out.Stderr, err))
 			return errorResponse(err, resp)
 		}
-		resp.Extra.Example.OK = 0
+		resp.Extra.Example.OK = 1
 		resp.Extra.Example.Message = out.Stdout
 	case JUDGE, FINAL:
 		log.Info("Judge called")

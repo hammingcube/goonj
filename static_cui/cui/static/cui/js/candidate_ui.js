@@ -507,7 +507,7 @@ function CandidateUi(options)
                     else {
                         Console.msg_error('User test case ' + test_case + ' : '+_ui_msg);
                     }*/
-                    Console.msg('<span style="color:blue">'+ 'Your test case ' + test_case + ' : ' + '</span>' +_ui_msg);
+                    Console.msg('<span style="color:blue">'+ 'Your test case <br><pre>' + test_case + '</pre><br>' + '</span>' +_ui_msg);
 
                     if (_ui != '1') {
                         verification_ok = false;
@@ -516,7 +516,7 @@ function CandidateUi(options)
 
                 if (_example == '1') {
                     //Console.msg_ok('Example test : '+ _example_msg);
-                    Console.msg_ok('Example test <br>' + '<span style="color:black">' + _example_msg + '</span>');
+                    Console.msg_ok('Example test <br>' + '<span style="color:black"><pre>' + _example_msg + '</pre></span>');
                 }
                 else {
                     Console.msg_error('Example test <br>' + '<span style="color:black">' + _example_msg + '</span>');
